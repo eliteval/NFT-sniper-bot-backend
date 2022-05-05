@@ -1,0 +1,27 @@
+{
+  "files": {
+    "main.css": "/static/css/main.2ffa5281.chunk.css",
+    "main.js": "/static/js/main.4d2d5c89.chunk.js",
+    "main.js.map": "/static/js/main.4d2d5c89.chunk.js.map",
+    "runtime-main.js": "/static/js/runtime-main.b2d14ed9.js",
+    "runtime-main.js.map": "/static/js/runtime-main.b2d14ed9.js.map",
+    "static/css/2.f4cb9c36.chunk.css": "/static/css/2.f4cb9c36.chunk.css",
+    "static/js/2.226c29e8.chunk.js": "/static/js/2.226c29e8.chunk.js",
+    "static/js/2.226c29e8.chunk.js.map": "/static/js/2.226c29e8.chunk.js.map",
+    "index.html": "/index.html",
+    "static/css/2.f4cb9c36.chunk.css.map": "/static/css/2.f4cb9c36.chunk.css.map",
+    "static/css/main.2ffa5281.chunk.css.map": "/static/css/main.2ffa5281.chunk.css.map",
+    "static/js/2.226c29e8.chunk.js.LICENSE.txt": "/static/js/2.226c29e8.chunk.js.LICENSE.txt",
+    "static/media/card-primary.png": "/static/media/card-primary.17212428.png",
+    "static/media/black-dashboard-pro-react.scss?v=1.2.0": "/static/media/night-sky-full-of-stars-fantasy-animation-made-of-magical-sparkly-light-particles-flickering-on-a-purple-blue-gradient-background_bajacpz7x_thumbnail-full01.e6a30d27.png",
+    "static/media/nucleo-icons.css": "/static/media/nucleo.bd5cce8b.eot",
+    "static/media/sniper1.jpg": "/static/media/sniper1.c4a159c4.jpg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.b2d14ed9.js",
+    "static/css/2.f4cb9c36.chunk.css",
+    "static/js/2.226c29e8.chunk.js",
+    "static/css/main.2ffa5281.chunk.css",
+    "static/js/main.4d2d5c89.chunk.js"
+  ]
+}
