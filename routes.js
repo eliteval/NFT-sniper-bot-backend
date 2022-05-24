@@ -29,6 +29,7 @@ router.post('/nft/readPlan', [requireAuth], nftSnipper.readPlan);
 router.post('/nft/letSell', [requireAuth,requireSniper], nftSnipper.letSell);
 router.post('/nft/letApprove', [requireAuth,requireSniper], nftSnipper.letApprove);
 router.post('/nft/letDel', [requireAuth,requireSniper], nftSnipper.letDel);
+router.get('/nft/getbots', [], nftSnipper.getBots);
 //pancake
 router.post('/pan/addBot', [requireAuth,requireSniper], pancakeSnipper.addBot);
 router.post('/pan/delBot', [requireAuth], pancakeSnipper.delBot);

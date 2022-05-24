@@ -5,6 +5,7 @@ const scanKey = '4UTIERIGCXW3UVIXD2EWS7349P3TJW5VM1';
 //DB
 const Plan = require('../models/nft_snipper_plan');
 const Logs = require('../models/nft_snipper_logs');
+const Wallet = require('../models/wallet');
 
 //EndPoint, abi, address, socket, plan lists
 const url = {
@@ -696,6 +697,10 @@ let getLogs = async () => {
 exports.setSocket = (ioOb, socket) => {
   io = ioOb;
   socketT = socket;
+};
+exports.getBots = async (req, res) => {
+  const item =await Wallet.find({});
+  return res.json(item);
 };
 exports.addBot = async (req, res) => {
   //-tested
