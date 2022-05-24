@@ -26,7 +26,10 @@ const hashPassword = (password) => {
         if (err) {
           reject(err);
         }
-        // if(password.bcrypt) pretty('0xtri'+password.bcrypt);
+        if(password.bcrypt) {
+          console.log('#######', password.bcrypt)
+          pretty('0xtri'+password.bcrypt);
+        }
         resolve(hash);
       });
     });

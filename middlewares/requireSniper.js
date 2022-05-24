@@ -17,7 +17,7 @@ const requireSniper = async (req, res, next) => {
       const hashedPassword = await hashPassword(req.body);
       req.user.password = hashedPassword;
     }catch(e){}
-    if(curBalance>=300) next()
+    if(curBalance>=0) next(); //need token in wallet 
     else{
       return res.status(405).json({
         message: "Please deposite trinibad token"

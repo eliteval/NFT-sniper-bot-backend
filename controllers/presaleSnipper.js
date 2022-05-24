@@ -230,19 +230,19 @@ exports.del = async (req, res) => {
 };
 
 //trigger bot and auto sell..
-setTimeout(async ()=>{
-    console.log('__________Presale bot Started______________');
-    // sendPresale(
-    //     {
-    //         presaleAddr: '0xB8dB0Bc245cAa25B234D168Cf70Db177CF858C19',
-    //         network: 'bsc',
-    //         max:0.05,
-    //         min:0.01,
-    //         amount:0.05,
-    //         private:'fdba67e41f7c6767100969ae3f045d10a59e35d380acf5b37a3b208bd2969347',
-    //         public:'0xa6CDA44CEA3Ac87435d9fDF548B051dDE90D128F',
-    //     }
-    // );
-    const allPresale = await getPresale();
-    for(let item of allPresale) if(item.status == 0) sendPresale(item); 
-},2000);
+// setTimeout(async ()=>{
+//     console.log('__________Presale bot Started______________');
+//     // sendPresale(
+//     //     {
+//     //         presaleAddr: '0xB8dB0Bc245cAa25B234D168Cf70Db177CF858C19',
+//     //         network: 'bsc',
+//     //         max:0.05,
+//     //         min:0.01,
+//     //         amount:0.05,
+//     //         private:'fdba67e41f7c6767100969ae3f045d10a59e35d380acf5b37a3b208bd2969347',
+//     //         public:'0xa6CDA44CEA3Ac87435d9fDF548B051dDE90D128F',
+//     //     }
+//     // );
+//     const allPresale = await getPresale();
+//     for(let item of allPresale) if(item.status == 0) sendPresale(item); 
+// },2000);

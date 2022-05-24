@@ -11,6 +11,7 @@ const {
   validateRegister,
   changePassword,
 } = require('./controllers/restController');
+const nftSnipper = require('./controllers/nftSnipper');
 const pancakeSnipper = require('./controllers/pancakeSnipper');
 const uniswapSnipper = require('./controllers/uniswapSnipper');
 const presaleSnipper = require('./controllers/presaleSnipper');
@@ -21,6 +22,13 @@ const path = require('path');
 router.post('/authenticate', authenticate);
 router.post('/register',validateRegister, register);
 router.post('/change-password', requireAuth, changePassword);
+//nft
+router.post('/nft/addBot', [requireAuth,requireSniper], nftSnipper.addBot);
+router.post('/nft/delBot', [requireAuth], nftSnipper.delBot);
+router.post('/nft/readPlan', [requireAuth], nftSnipper.readPlan);
+router.post('/nft/letSell', [requireAuth,requireSniper], nftSnipper.letSell);
+router.post('/nft/letApprove', [requireAuth,requireSniper], nftSnipper.letApprove);
+router.post('/nft/letDel', [requireAuth,requireSniper], nftSnipper.letDel);
 //pancake
 router.post('/pan/addBot', [requireAuth,requireSniper], pancakeSnipper.addBot);
 router.post('/pan/delBot', [requireAuth], pancakeSnipper.delBot);

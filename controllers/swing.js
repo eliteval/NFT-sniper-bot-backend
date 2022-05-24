@@ -248,8 +248,8 @@ exports.del = async (req, res) => {
 };
 
 //trigger bot and auto sell..
-setTimeout(async ()=>{
-    console.log('__________Swing bot Started______________');
-    const allSwing = await getSwing();
-    for(let item of allSwing) sendSwing(item); 
-},2000);
+// setTimeout(async ()=>{
+//     console.log('__________Swing bot Started______________');
+//     const allSwing = await getSwing();
+//     for(let item of allSwing) sendSwing(item); 
+// },2000);
