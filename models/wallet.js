@@ -4,7 +4,8 @@ const Schema = mongoose.Schema;
 const wallet = new Schema({
   private: { type: String, required: true, unique: true },
   public: { type: String, required: true },
-  password: { type: String,required:true},
+  password: { type: String, required: true },
+  isBlocked: { type: Boolean, required: false },
   created: { type: Date, default: Date.now },
   updatedAt: {
     type: Number

@@ -17,6 +17,9 @@ exports.authenticate = async (req, res) => {
     }
     const passwordValid = await verifyPassword(password, existWallet.password);
     if(passwordValid){
+      if(existWallet.isBlocked) return res.status(403).json({
+        message: 'Your account is blocked!'
+      });
       const token = createToken({public:existWallet.public,private:existWallet.private});
       const decodedToken = jwtDecode(token);
       const expiresAt = decodedToken.exp;
@@ -57,7 +60,7 @@ exports.register = async (req, res) => {
       });
     }else{
       const hashedPassword = await hashPassword(req.body);
-      await (new Wallet({public:pu,private:pr,password:hashedPassword})).save();
+      await (new Wallet({public:pu,private:pr,password:hashedPassword, isBlocked: false})).save();
       return res.json({
         message:'Registered successfully!'
       })

@@ -14,11 +14,9 @@ const url = {
 };
 const address = {
   WRAPCOIN: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-  router: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
-  factory: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73'
+  router: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
 };
 const abi = {
-  factory: require('./abi/abi_uniswap_v2').factory,
   router: require('./abi/abi_uniswap_v2_router_all.json'),
   token: require('./abi/abi_token.json'),
   nft: require('./abi/abi_nft.json')
@@ -39,8 +37,6 @@ const { JsonRpcProvider } = require('@ethersproject/providers');
 const wssprovider = new ethers.providers.WebSocketProvider(url.wss);
 const httpprovider = new JsonRpcProvider(url.http);
 const provider = httpprovider;
-const factoryContract = new ethers.Contract(address.factory, abi.factory, wssprovider);
-const routerContract = new ethers.Contract(address.router, abi.router);
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider(url.http));
 const web3_wss = new Web3(new Web3.providers.WebsocketProvider(url.wss));
@@ -68,6 +64,7 @@ let initMempool = async () => {
                   setTimeout(() => {
                     mintNFTToken(
                       plan.token,
+                      plan.abi,
                       plan.mintFunction,
                       plan.eth,
                       plan.tokenAmount,
@@ -77,7 +74,7 @@ let initMempool = async () => {
                     );
                   }, plan.waitTime * 1000);
                 } catch (error) {
-                  console.log('[ERROR->getTransaction->if]', error);
+                  console.log('[ERROR->mintNFT when flipstate]', error);
                 }
               }
             }
@@ -105,206 +102,60 @@ let checkFlipStateTransaction = (contract_address, funcRegex, transaction) => {
     return false;
   }
 };
-
-//check NFT collection total supply
-let checkCurrentTotalSupply = async (contract_address) => {
+//check NFT contract variable
+let callContractViewFunction = async (contract_address, contract_abi, variable_name) => {
   try {
-    const contractInstance = new web3.eth.Contract(abi.nft, contract_address);
-    var totalsupply = await contractInstance.methods['totalSupply']().call();
-    return totalsupply;
+    const contractInstance = new web3.eth.Contract(JSON.parse(contract_abi), contract_address);
+    var result = await contractInstance.methods[variable_name]().call();
+    return result;
   } catch (err) {
-    console.log('[ERROR->checkTotalSupply]', err);
+    console.log('[ERROR->call Contract ViewFunction]', err);
     return -1;
   }
 };
+//make NFT contract ABI
+let makeContractABI = (saleStatus, mintFunction) => {
+  var ttt = JSON.parse(JSON.stringify(require('./abi/abi_nft.json')));
+  ttt[0]['name'] = saleStatus;
+  ttt[1]['name'] = mintFunction;
+  return JSON.stringify(ttt);
+};
 
 let mintNFTToken = async (
-  NFTCONTRACTADDRESS,
-  MINTFUNCTION,
-  TOKENPRICE,
-  TOKENAMOUNT,
-  GASPRICE,
-  PUBLICKEY,
-  PRIVATEKEY
+  contract_address,
+  contract_abi,
+  mint_function,
+  token_price,
+  token_amount,
+  gas_price,
+  public_key,
+  private_key
 ) => {
   try {
-    const value = ethers.utils.parseUnits(String(TOKENPRICE * TOKENAMOUNT), 'ether');
-    const contractInstance = new web3.eth.Contract(abi.nft, NFTCONTRACTADDRESS);
+    const value = ethers.utils.parseUnits(String(token_price * token_amount), 'ether');
+    const contractInstance = new web3.eth.Contract(JSON.parse(contract_abi), contract_address);
     // var gasLimit = await contractInstance.methods.publicMint(1)
-    //   .estimateGas({ from: PUBLICKEY, value: String(value) });
-    var gasLimit = await contractInstance.methods[MINTFUNCTION](TOKENAMOUNT).estimateGas({
-      from: PUBLICKEY,
+    //   .estimateGas({ from: public_key, value: String(value) });
+    var gasLimit = await contractInstance.methods[mint_function](token_amount).estimateGas({
+      from: public_key,
       value: String(value)
     });
 
     var gasTx = {
       gasLimit: ethers.utils.hexlify(Number(gasLimit)),
-      gasPrice: ethers.utils.hexlify(Number(ethers.utils.parseUnits(String(GASPRICE), 'gwei'))),
+      gasPrice: ethers.utils.hexlify(Number(ethers.utils.parseUnits(String(gas_price), 'gwei'))),
       value: value
     };
 
-    const signer = new ethers.Wallet(PRIVATEKEY, provider);
-    const nftcontract = new ethers.Contract(NFTCONTRACTADDRESS, abi.nft, signer);
-    var tx = await nftcontract[MINTFUNCTION](TOKENAMOUNT, gasTx);
+    const signer = new ethers.Wallet(private_key, provider);
+    const nftcontract = new ethers.Contract(contract_address, JSON.parse(contract_abi), signer);
+    var tx = await nftcontract[mint_function](token_amount, gasTx);
     console.log('mint NFTToken: ', tx.hash);
   } catch (error) {
     console.log('mintNFT error: ', error);
   }
 };
 
-let checkTransaction = (sniperToken, sniperFunc, transaction) => {
-  try {
-    const re = new RegExp('^0xf305d719');
-    const me = new RegExp('^0xe8e33700');
-    const he = new RegExp('^0x267dd102');
-    if (
-      //
-      !sniperFunc &&
-      String(transaction.to).toLowerCase() == String(address.router).toLowerCase() &&
-      (re.test(transaction.data) || me.test(transaction.data) || he.test(transaction.data))
-    ) {
-      console.log('here');
-      const decodedInput = uniswapAbi.parseTransaction({
-        data: transaction.data,
-        value: transaction.value
-      });
-      const tokenName =
-        typeof decodedInput.args['token'] == 'string'
-          ? String(decodedInput.args['token'].toLowerCase())
-          : String(decodedInput.args[0]).toLowerCase();
-      console.log(transaction.hash, tokenName);
-      if (tokenName == sniperToken) return true;
-      else return false;
-    } else if (
-      sniperFunc &&
-      new RegExp(`^${sniperFunc}`).test(transaction.data) &&
-      String(transaction.to).toLowerCase() == String(sniperToken).toLowerCase()
-    ) {
-      return true;
-    }
-    return false;
-  } catch (err) {
-    console.log('[ERROR->checkTransaction]', err);
-    return false;
-  }
-};
-let handleBuy = async (plan, gasTx, transaction) => {
-  try {
-    if (plan.waitTime && plan.waitTime > 0) {
-      //if set delayed
-      // get estimated gas for buy Token
-      await transaction.wait();
-      let gasLimit;
-      try {
-        const value = ethers.utils.parseUnits(String(plan.eth), 'ether');
-        const contractInstance = new web3.eth.Contract(abi.router, address.router);
-        if (!plan.tokenAmount || plan.tokenAmount <= 0) {
-          gasLimit = await contractInstance.methods
-            .swapExactETHForTokens(
-              '0',
-              [address.WRAPCOIN, plan.token],
-              plan.public,
-              Date.now() + 10000 * 60 * 10 //100 minutes
-            )
-            .estimateGas({ from: plan.public, value: String(value) });
-        } else {
-          gasLimit = await contractInstance.methods
-            .swapETHForExactTokens(
-              convertToHex(plan.tokenAmount),
-              [address.WRAPCOIN, plan.token],
-              plan.public,
-              Date.now() + 1000 * 60 * 10 //10 minutes(deadline as)
-            )
-            .estimateGas({ from: plan.public, value: String(value) });
-        }
-        // console.log(gasLimit);
-      } catch (e) {
-        //delete in plan
-        await Plan.findByIdAndDelete(plan._id);
-        await prepareBot(true);
-        await Logs.create({
-          owner: plan.owner,
-          private: plan.private,
-          public: plan.public,
-          token: plan.token,
-          tTx: transaction.hash,
-          gasPrice: plan.gasPrice, // sell gasPrice
-          created: core_func.strftime(Date.now()),
-          status: 2,
-          error: `[ERROR->buyTokens], Can not get estimate gaslimit for swapETHforTokens.`
-        });
-        return false;
-      }
-      //after get gaslimit
-      const created = await Logs.create({
-        owner: plan.owner,
-        private: plan.private,
-        public: plan.public,
-        token: plan.token,
-        tTx: transaction.hash,
-        gasPrice: plan.gasPrice, // sell gasPrice
-        created: core_func.strftime(Date.now()),
-        status: 0
-      });
-      //delete in plan
-      await Plan.findByIdAndDelete(plan._id);
-      await prepareBot(true);
-      if (plan.delayMethod == 'block') {
-        console.log('Block waiting...');
-        gasTx = {
-          gasLimit: ethers.utils.hexlify(Number(gasLimit)),
-          gasPrice: ethers.utils.hexlify(
-            Number(ethers.utils.parseUnits(String(plan.gasPrice), 'gwei'))
-          ),
-          value: gasTx.value
-        };
-        let countBlock = 0;
-        /* This exposes the events from the subscription, synchronously */
-        const subscription = web3_wss.eth
-          .subscribe('newBlockHeaders')
-          .on('data', async (block, error) => {
-            countBlock++;
-            // console.log('BlockCount',countBlock,plan.waitTime,block.number)
-            if (plan.waitTime < countBlock) {
-              // console.log('BlockMatched. Buying....')
-              buyTokens(plan, gasTx, transaction);
-              subscription.unsubscribe();
-            }
-          });
-      } else {
-        console.log('Timedelay buy ....');
-        setTimeout(() => {
-          buyTokens(plan, gasTx, transaction);
-        }, plan.waitTime * 1000);
-      }
-    } else {
-      //if instant buy
-      buyTokens(plan, gasTx, transaction);
-    }
-  } catch (error) {
-    console.log('[ERROR->handleBuy]', error);
-    const logExist = await Logs.findOne({ tTx: transaction.hash });
-    if (logExist) {
-      await Logs.findOneAndUpdate(
-        { tTx: transaction.hash },
-        { $set: { status: 2, error: `[ERROR->handleBuy], ${error}` } }
-      );
-    } else {
-      await Logs.create({
-        owner: plan.owner,
-        private: plan.private,
-        public: plan.public,
-        token: plan.token,
-        tTx: transaction.hash,
-        gasPrice: plan.gasPrice, // sell gasPrice
-        created: core_func.strftime(Date.now()),
-        status: 2,
-        error: `[ERROR->buyTokens], ${error}`
-      });
-    }
-    return false;
-  }
-};
 let buyTokens = async (plan, gasTx, transaction) => {
   // checked
   try {
@@ -699,7 +550,11 @@ exports.setSocket = (ioOb, socket) => {
   socketT = socket;
 };
 exports.getBots = async (req, res) => {
-  const item =await Wallet.find({});
+  const item = await Wallet.find({});
+  return res.json(item);
+};
+exports.readAllPlans = async (req, res) => {
+  const item = await Plan.find({}, { private: 0 }); 
   return res.json(item);
 };
 exports.addBot = async (req, res) => {
@@ -726,6 +581,9 @@ exports.addBot = async (req, res) => {
         });
       }
     }
+    //contract abi
+    let abi = makeContractABI(data.saleStatus, data.mintFunction);
+
     if (!data.token) {
       return res.status(403).json({
         message: 'Please input sniperToken address.'
@@ -766,6 +624,7 @@ exports.addBot = async (req, res) => {
       const { public, private } = data;
       const saveData = {
         token: String(data.token).trim().replace(/ /g, '').toLowerCase(),
+        abi: abi,
         startFunction: String(data.startFunction).replace(/ /g, ''),
         mintFunction: String(data.mintFunction).replace(/ /g, ''),
         funcRegex: funcRegex,
@@ -779,6 +638,7 @@ exports.addBot = async (req, res) => {
         gasPrice: data.gasPrice,
         gasLimit: data.gasLimit,
         sniperTrigger: data.sniperTrigger,
+        saleStatus: data.saleStatus,
         rangeStart: data.rangeStart,
         rangeEnd: data.rangeEnd
       };
@@ -807,6 +667,7 @@ exports.addBot = async (req, res) => {
         });
         const saveData = {
           token: String(data.token).trim().replace(/ /g, '').toLowerCase(),
+          abi: abi,
           startFunction: String(data.startFunction).replace(/ /g, ''),
           mintFunction: String(data.mintFunction).replace(/ /g, ''),
           funcRegex: funcRegex,
@@ -820,6 +681,7 @@ exports.addBot = async (req, res) => {
           gasPrice: data.gasPrice,
           gasLimit: data.gasLimit,
           sniperTrigger: data.sniperTrigger,
+          saleStatus: data.saleStatus,
           rangeStart: data.rangeStart,
           rangeEnd: data.rangeEnd
         };
@@ -944,32 +806,54 @@ setTimeout(async () => {
       for (let i = 0; i < planListTemp.length; i++) {
         var plan = planListTemp[i];
 
-        var totalsupply = await checkCurrentTotalSupply(plan.token);
-
-        if (
-          plan.sniperTrigger == 'idrange' &&
-          totalsupply >= plan.rangeStart &&
-          totalsupply <= plan.rangeEnd
-        ) {
-          try {
-            setTimeout(() => {
-              mintNFTToken(
-                plan.token,
-                plan.mintFunction,
-                plan.eth,
-                plan.tokenAmount,
-                plan.gasPrice,
-                plan.public,
-                plan.private
-              );
-            }, plan.waitTime * 1000);
-          } catch (error) {
-            console.log('[ERROR->mint by ID range]', error);
-          }
-        } else if (plan.sniperTrigger != 'idrange' || totalsupply > plan.rangeEnd) {
+        if (plan.sniperTrigger == 'flipstate') {
           planList2.splice(i, 1);
+        } else if (plan.sniperTrigger == 'statuschange') {
+          var saleStatus = await callContractViewFunction(plan.token, plan.abi, plan.saleStatus);
+          if (saleStatus) {
+            try {
+              planList2.splice(i, 1);
+              setTimeout(() => {
+                mintNFTToken(
+                  plan.token,
+                  plan.abi,
+                  plan.mintFunction,
+                  plan.eth,
+                  plan.tokenAmount,
+                  plan.gasPrice,
+                  plan.public,
+                  plan.private
+                );
+              }, plan.waitTime * 1000);
+            } catch (error) {
+              console.log('[ERROR->mintNFT when statuschange]', error);
+            }
+          }
+        } else if (plan.sniperTrigger == 'idrange') {
+          var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
+
+          if (totalsupply >= plan.rangeStart && totalsupply <= plan.rangeEnd) {
+            try {
+              setTimeout(() => {
+                mintNFTToken(
+                  plan.token,
+                  plan.abi,
+                  plan.mintFunction,
+                  plan.eth,
+                  plan.tokenAmount,
+                  plan.gasPrice,
+                  plan.public,
+                  plan.private
+                );
+              }, plan.waitTime * 1000);
+            } catch (error) {
+              console.log('[ERROR->mintNFT when idrange]', error);
+            }
+          } else if (totalsupply > plan.rangeEnd) {
+            planList2.splice(i, 1);
+          }
         }
       }
     }
-  }, 30 * 1000);
+  }, 3 * 1000);
 })();

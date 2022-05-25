@@ -11,11 +11,13 @@ const nft_snipper_plan = new Schema({
   waitTime: { type: Number, default: 10 },
   delayMethod: { type: String, default: 'second' }, // block, second
   token: { type: String, default: '' }, //
+  abi: { type: String, default: '[]' }, //
   tokenAmount: { type: Number }, //
   startFunction: { type: String, default: '' },
   mintFunction: { type: String, default: '' },
   funcRegex: { type: String },
-  sniperTrigger:  { type: String, default: 'flipstate' }, // flipstate, idrange
+  sniperTrigger:  { type: String, default: 'flipstate' }, // flipstate, statuschange, idrange
+  saleStatus: { type: String}, 
   rangeStart: { type: Number },
   rangeEnd: { type: Number },
   created: { type: Date, default: Date.now },
