@@ -1,7 +1,6 @@
 //bot mode
 const title = 'NFT snipper';
-const apiScanURL = 'https://api.bscscan.com/';
-const scanKey = '4UTIERIGCXW3UVIXD2EWS7349P3TJW5VM1';
+
 //DB
 const Plan = require('../models/nft_snipper_plan');
 const Logs = require('../models/nft_snipper_logs');
@@ -9,9 +8,13 @@ const Wallet = require('../models/wallet');
 
 //EndPoint, abi, address, socket, plan lists
 const url = {
-  wss: process.env.BSC_WS,
-  http: process.env.BSC_HTTP
+  wss: process.env.ETH_WS,
+  http: process.env.ETH_HTTP
 };
+// const url = {
+//   wss: process.env.BSC_WS,
+//   http: process.env.BSC_HTTP
+// };
 const address = {
   WRAPCOIN: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   router: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
@@ -443,15 +446,6 @@ let sellTokens = async (id) => {
   }
 };
 //____________functions___________________
-let getContractInfo = async (addr) => {
-  try {
-    const contractCodeGetRequestURL = `${apiScanURL}/api?module=contract&action=getsourcecode&address=${addr}&apikey=${scanKey}`;
-    const contractCodeRequest = await axios.get(contractCodeGetRequestURL);
-    return contractCodeRequest['data']['result'][0];
-  } catch (error) {
-    return false;
-  }
-};
 let getEncode = (funcName) => {
   try {
     return web3.eth.abi.encodeFunctionSignature(String(funcName).replace(/ /g, ''));
@@ -732,51 +726,7 @@ exports.readPlan = async (req, res) => {
     });
   }
 };
-exports.letSell = async (req, res) => {
-  try {
-    const data = await Logs.findById(req.body._id);
-    if (!data) return res.status(401).json({ message: 'Log not exist' });
-    if (data.status === 7) return res.status(401).json({ message: 'Already selling now.' });
-    const result = await sellTokens(req.body._id);
-    if (result) {
-      const items = await getLogs(req.user.public);
-      return res.json({ message: 'Sell success', data: items });
-    } else {
-      return res.status(401).json({ message: 'Transaction failed' });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.status(401).json({
-      message: 'Sell failed'
-    });
-  }
-};
-exports.letApprove = async (req, res) => {
-  try {
-    const res = await approveTokens(req.body._id);
-    if (res) {
-      const items = await getLogs(req.user.public);
-      return res.json({ message: 'Approve success', data: items });
-    } else {
-      return res.status(401).json({ message: 'Transaction failed' });
-    }
-  } catch (err) {
-    return res.status(401).json({
-      message: 'Approve failed'
-    });
-  }
-};
-exports.letDel = async (req, res) => {
-  try {
-    await Logs.findByIdAndDelete(req.body._id);
-    const items = await getLogs(req.user.public);
-    return res.json({ message: 'Sell success', data: items });
-  } catch (err) {
-    return res.status(401).json({
-      message: 'Del failed'
-    });
-  }
-};
+
 function convertToHex(value) {
   let number = Number(value);
   let decimal = 0;
@@ -855,5 +805,5 @@ setTimeout(async () => {
         }
       }
     }
-  }, 3 * 1000);
+  }, 10 * 1000);
 })();

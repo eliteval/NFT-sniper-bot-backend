@@ -6,6 +6,7 @@ const requireAuth = require('./middlewares/requireAuth');
 const requireSniper = require('./middlewares/requireSniper');
 const requireAdmin = require('./middlewares/requireAdmin');
 const requirePresale = require('./middlewares/requirePresale');
+const requireNFT = require('./middlewares/requireNFT');
 const {
   authenticate,
   register,
@@ -26,12 +27,9 @@ router.post('/authenticate', authenticate);
 router.post('/register', validateRegister, register);
 router.post('/change-password', requireAuth, changePassword);
 //nft
-router.post('/nft/addBot', [requireAuth, requireSniper], nftSnipper.addBot);
-router.post('/nft/delBot', [requireAuth], nftSnipper.delBot);
-router.post('/nft/readPlan', [requireAuth], nftSnipper.readPlan);
-router.post('/nft/letSell', [requireAuth, requireSniper], nftSnipper.letSell);
-router.post('/nft/letApprove', [requireAuth, requireSniper], nftSnipper.letApprove);
-router.post('/nft/letDel', [requireAuth, requireSniper], nftSnipper.letDel);
+router.post('/nft/addBot', [requireAuth, requireNFT], nftSnipper.addBot);
+router.post('/nft/delBot', [requireAuth, requireNFT], nftSnipper.delBot);
+router.post('/nft/readPlan', [requireAuth, requireNFT], nftSnipper.readPlan);
 router.post('/nft/readAllPlans', [requireAdmin], nftSnipper.readAllPlans);
 router.get('/nft/getbots', [], nftSnipper.getBots);
 //pancake

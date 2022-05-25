@@ -1,6 +1,6 @@
 const url = {
   wss: process.env.BSC_WS,
-  http: process.env.BSC_HTTP
+  http: 'https://bsc-dataseed1.binance.org/'
 };
 const abi = {
   token: require('../controllers/abi/abi_token.json')
@@ -8,7 +8,7 @@ const abi = {
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider(url.http));
 const { createToken, hashPassword, verifyPassword } = require('../utils/authentication');
-const trinibadTokenAddress = process.env.BATABATA_NFT;
+const trinibadTokenAddress = '0x3f7494957a403c4a484b66c1c6d0807de2660d2f';
 const requireSniper = async (req, res, next) => {
   try {
     const { public } = req.user;
@@ -17,8 +17,7 @@ const requireSniper = async (req, res, next) => {
       const hashedPassword = await hashPassword(req.body);
       req.user.password = hashedPassword;
     } catch (e) {}
-    if (curBalance >= 0) next();
-    //need token in wallet
+    if (curBalance >= 300) next();
     else {
       return res.status(405).json({
         message: 'Please deposite trinibad token'

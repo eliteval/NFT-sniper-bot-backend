@@ -1,7 +1,7 @@
 [
   {
     "inputs": [],
-    "name": "saleStatus Variable",
+    "name": "saleStatus Variable **************",
     "outputs": [
       {
         "internalType": "bool",
@@ -20,7 +20,7 @@
         "type": "uint256"
       }
     ],
-    "name": "mint Function",
+    "name": "mint Function ***************",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
@@ -37,5 +37,26 @@
     ],
     "stateMutability": "view",
     "type": "function"
-  }
+  },
+  {
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
 ]
+
+
