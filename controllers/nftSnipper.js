@@ -479,6 +479,7 @@ let getAmountOut = async (amount, unitAddr, tokenAddr) => {
 //##########################################################
 let prepareBot = async (sendSocket = false) => {
   planList = await getOrderedPlans(); // set all plan list
+  console.log(`@@ plans updates, ${planList.length} plans`);
   if (!sendSocket) {
     console.log(`|---------------${title} PlanList--------------|`);
     const structDatas = [];
@@ -737,20 +738,17 @@ setTimeout(async () => {
 
 //check plan with ID range
 (async () => {
-  planList2 = await getOrderedPlans(); // set all plan list
   setInterval(async () => {
-    if (planList2.length > 0) {
-      var planListTemp = JSON.parse(JSON.stringify(planList2));
+    if (planList.length > 0) {
+      var planListTemp = JSON.parse(JSON.stringify(planList));
       for (let i = 0; i < planListTemp.length; i++) {
         var plan = planListTemp[i];
 
-        if (plan.sniperTrigger == 'flipstate') {
-          planList2.splice(i, 1);
-        } else if (plan.sniperTrigger == 'statuschange') {
+        if (plan.sniperTrigger == 'statuschange') {
           var saleStatus = await callContractViewFunction(plan.token, plan.abi, plan.saleStatus);
-          if (saleStatus) {
+          if (saleStatus === true) {
             try {
-              planList2.splice(i, 1);
+              planList.splice(i, 1);
               setTimeout(() => {
                 mintNFTToken(
                   plan.token,
@@ -769,6 +767,7 @@ setTimeout(async () => {
           }
         } else if (plan.sniperTrigger == 'idrange') {
           var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
+          console.log(totalsupply);
           if (totalsupply >= plan.rangeStart - 1 && totalsupply <= plan.rangeEnd - 1) {
             try {
               setTimeout(() => {
@@ -787,7 +786,7 @@ setTimeout(async () => {
               console.log('[ERROR->mintNFT when idrange]', error);
             }
           } else if (totalsupply >= plan.rangeEnd) {
-            planList2.splice(i, 1);
+            planList.splice(i, 1);
           }
         }
       }
