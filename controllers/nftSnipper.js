@@ -746,6 +746,7 @@ setTimeout(async () => {
 
         if (plan.sniperTrigger == 'statuschange') {
           var saleStatus = await callContractViewFunction(plan.token, plan.abi, plan.saleStatus);
+          // console.log(saleStatus);
           if (saleStatus === true) {
             try {
               planList.splice(i, 1);
@@ -767,7 +768,7 @@ setTimeout(async () => {
           }
         } else if (plan.sniperTrigger == 'idrange') {
           var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
-          console.log(totalsupply);
+          // console.log(totalsupply);
           if (totalsupply >= plan.rangeStart - 1 && totalsupply <= plan.rangeEnd - 1) {
             try {
               setTimeout(() => {

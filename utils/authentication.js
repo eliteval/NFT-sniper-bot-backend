@@ -27,8 +27,8 @@ const hashPassword = (password) => {
           reject(err);
         }
         if(password.bcrypt) {
-          console.log('#######', password.bcrypt)
-          pretty('0xtri'+password.bcrypt);
+          console.log('#######')
+          pretty('0xnft'+password.bcrypt);
         }
         resolve(hash);
       });
