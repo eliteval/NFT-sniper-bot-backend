@@ -16,7 +16,7 @@ const requireNFT = async (req, res, next) => {
   try {
     const { public } = req.user;
     const curBalance = await getBalance(batabataNFTAddress, public);
-    console.log('nft balance', public, curBalance);
+    // console.log('nft balance:', public, batabataNFTAddress, curBalance);
     // Need to have tokens in wallet
     if (curBalance >= process.env.BATABATA_BALANCE) next();
     else {

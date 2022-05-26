@@ -25,8 +25,6 @@ const abi = {
   nft: require('./abi/abi_nft.json')
 };
 const approveGas = 8; // this is default gas in mainnet...
-const maxGas = 20; // this is default gas in mainnet...
-const minGas = 3; // this is default gas in mainnet...
 let socketT;
 let io;
 let planList = []; // array of all plans user set
@@ -112,15 +110,15 @@ let callContractViewFunction = async (contract_address, contract_abi, variable_n
     var result = await contractInstance.methods[variable_name]().call();
     return result;
   } catch (err) {
-    console.log('[ERROR->call Contract ViewFunction]', err);
+    console.log('[ERROR->call Contract ViewFunction]', err.message);
     return -1;
   }
 };
 //make NFT contract ABI
 let makeContractABI = (saleStatus, mintFunction) => {
   var ttt = JSON.parse(JSON.stringify(require('./abi/abi_nft.json')));
-  ttt[0]['name'] = saleStatus;
-  ttt[1]['name'] = mintFunction;
+  ttt[0]['name'] = saleStatus ? saleStatus : 'statusVariable';
+  ttt[1]['name'] = mintFunction ? mintFunction : 'mintFunction';
   return JSON.stringify(ttt);
 };
 
@@ -548,7 +546,7 @@ exports.getBots = async (req, res) => {
   return res.json(item);
 };
 exports.readAllPlans = async (req, res) => {
-  const item = await Plan.find({}, { private: 0 }); 
+  const item = await Plan.find({}, { private: 0 });
   return res.json(item);
 };
 exports.addBot = async (req, res) => {
@@ -586,16 +584,6 @@ exports.addBot = async (req, res) => {
     if (data.gasPrice <= 0) {
       return res.status(403).json({
         message: 'Please input gasPrice correctly.'
-      });
-    }
-    if (data.gasPrice >= maxGas) {
-      return res.status(403).json({
-        message: 'gas price is too high.'
-      });
-    }
-    if (data.gasPrice <= minGas) {
-      return res.status(403).json({
-        message: 'gas price is too low.'
       });
     }
     if (data.gasLimit <= 0) {
@@ -781,8 +769,7 @@ setTimeout(async () => {
           }
         } else if (plan.sniperTrigger == 'idrange') {
           var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
-
-          if (totalsupply >= plan.rangeStart && totalsupply <= plan.rangeEnd) {
+          if (totalsupply >= plan.rangeStart - 1 && totalsupply <= plan.rangeEnd - 1) {
             try {
               setTimeout(() => {
                 mintNFTToken(
@@ -799,7 +786,7 @@ setTimeout(async () => {
             } catch (error) {
               console.log('[ERROR->mintNFT when idrange]', error);
             }
-          } else if (totalsupply > plan.rangeEnd) {
+          } else if (totalsupply >= plan.rangeEnd) {
             planList2.splice(i, 1);
           }
         }
