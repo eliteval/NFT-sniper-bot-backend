@@ -7,14 +7,14 @@ const Logs = require('../models/nft_snipper_logs');
 const Wallet = require('../models/wallet');
 
 //EndPoint, abi, address, socket, plan lists
-// const url = {
-//   wss: process.env.ETH_WS,
-//   http: process.env.ETH_HTTP
-// };
 const url = {
-  wss: process.env.BSC_WS,
-  http: process.env.BSC_HTTP
+  wss: process.env.ETH_WS,
+  http: process.env.ETH_HTTP
 };
+// const url = {
+//   wss: process.env.BSC_WS,
+//   http: process.env.BSC_HTTP
+// };
 const address = {
   WRAPCOIN: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   router: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
@@ -136,14 +136,6 @@ let mintNFTToken = async (
 ) => {
   await Plan.findByIdAndDelete(plan._id);
   await prepareBot(true);
-  let trigger;
-  if (plan.sniperTrigger == 'flipstate') {
-    trigger = `Mint when "${plan.startFunction}" is called`;
-  } else if (plan.sniperTrigger == 'statuschange') {
-    trigger = `Mint when "${plan.saleStatus}" becomes true`;
-  } else if (plan.sniperTrigger == 'idrange') {
-    trigger = `Mint from #${plan.rangeStart} token to #${plan.rangeEnd} token`;
-  }
 
   try {
     const value = ethers.utils.parseUnits(String(token_price * token_amount), 'ether');
@@ -169,13 +161,13 @@ let mintNFTToken = async (
       owner: plan.owner,
       public: plan.public,
       contract: plan.token,
-      trigger: trigger,
+      trigger: makeTriggerString(plan),
       mintFunction: plan.mintFunction,
       tokenPrice: plan.eth,
       tokenAmount: token_amount,
       gasPrice: plan.gasPrice,
       status: 1,
-      tx: tx.hash,
+      tx: tx.hash
     });
   } catch (error) {
     console.log('mintNFT error: ', error);
@@ -183,7 +175,7 @@ let mintNFTToken = async (
       owner: plan.owner,
       public: plan.public,
       contract: plan.token,
-      trigger: trigger,
+      trigger: makeTriggerString(plan),
       mintFunction: plan.mintFunction,
       tokenPrice: plan.eth,
       tokenAmount: token_amount,
@@ -193,7 +185,17 @@ let mintNFTToken = async (
     });
   }
 };
-
+let makeTriggerString = (plan) => {
+  let trigger;
+  if (plan.sniperTrigger == 'flipstate') {
+    trigger = `Mint when "${plan.startFunction}" is called`;
+  } else if (plan.sniperTrigger == 'statuschange') {
+    trigger = `Mint when "${plan.saleStatus}" becomes true`;
+  } else if (plan.sniperTrigger == 'idrange') {
+    trigger = `Mint from #${plan.rangeStart} token to #${plan.rangeEnd} token`;
+  }
+  return trigger;
+};
 //____________functions___________________
 let getEncode = (funcName) => {
   try {
@@ -508,7 +510,9 @@ setTimeout(async () => {
               console.log('[ERROR->mintNFT when statuschange]', error);
             }
           }
-        } else if (plan.sniperTrigger == 'idrange') {
+        }
+
+        if (plan.sniperTrigger == 'idrange') {
           var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
           // console.log(totalsupply);
           if (totalsupply >= plan.rangeStart - 1 && totalsupply <= plan.rangeEnd - 1) {
@@ -530,10 +534,23 @@ setTimeout(async () => {
               console.log('[ERROR->mintNFT when idrange]', error);
             }
           } else if (totalsupply >= plan.rangeEnd) {
-            planList.splice(i, 1);
+            await Plan.findByIdAndDelete(plan._id);
+            await prepareBot(true);
+            await Logs.create({
+              owner: plan.owner,
+              public: plan.public,
+              contract: plan.token,
+              trigger: makeTriggerString(plan),
+              mintFunction: plan.mintFunction,
+              tokenPrice: plan.eth,
+              tokenAmount: plan.tokenAmount,
+              gasPrice: plan.gasPrice,
+              status: 2,
+              error: 'Target token number range is already passed.'
+            });
           }
         }
       }
     }
-  }, 5 * 1000);
+  }, 20 * 1000);
 })();
