@@ -2,25 +2,20 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const nft_snipper_logs = new Schema({
-  owner: {type: String,required:true },
-  private: { type: String },
+  owner: { type: String, required: true },
   public: { type: String },
-  token: { type: String },
-  currentPrice: { type:Number },
-  sellPrice: { type:Number },
-  gasPrice: { type:Number}, //gwei
-  tTx: { type: String},// token hash
-  bTx: { type: String},// buy hash
-  aTx: { type: String},// approve hash
-  sTx: { type: String},// sell hash
-  error: { type: String, default:''},
+  contract: { type: String },
+  trigger: { type: String },
+  mintFunction: { type: String },
+  tokenPrice: { type: Number },
+  tokenAmount: { type: Number },
+  gasPrice: { type: Number }, //gwei
+  tx: { type: String },
+  error: { type: String, default: '' },
   created: { type: Date, default: Date.now },
-  updatedAt: {
-    type: Number
-  },
-  status:{
-    type:Number,
-    default:0, // 0-buying,1-bought,2-buy failed,4-approving,5-approved,6-approve failed,7-selling,8-sold,9-sell failed
+  status: {
+    type: Number,
+    default: 0 // 0-pending, 1-success, 2-failed
   }
 });
 
