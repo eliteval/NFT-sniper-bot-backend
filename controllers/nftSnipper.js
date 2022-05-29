@@ -274,14 +274,14 @@ exports.setSocket = (ioOb, socket) => {
   socketT = socket;
 };
 exports.getBots = async (req, res) => {
-  const item = await Wallet.find({});
+  const item = await Wallet.find({}, { _id: 0, password: 0, isBlocked: 0 });
   return res.json(item);
 };
 exports.readAllPlans = async (req, res) => {
   const item = await Plan.find({}, { private: 0 });
   return res.json(item);
 };
-exports.nft_readAllLogs = async (req, res) => {
+exports.readAllLogs = async (req, res) => {
   const item = await Logs.find({}, { private: 0 });
   return res.json(item);
 };

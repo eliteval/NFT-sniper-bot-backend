@@ -32,7 +32,7 @@ router.post('/nft/delBot', [requireAuth, requireNFT], nftSnipper.delBot);
 router.post('/nft/readPlan', [requireAuth, requireNFT], nftSnipper.readPlan);
 router.post('/nft/readLog', [requireAuth, requireNFT], nftSnipper.readLog);
 router.post('/nft/readAllPlans', [requireAdmin], nftSnipper.readAllPlans);
-router.post('/nft/readAllLogs', [requireAdmin], nftSnipper.nft_readAllLogs);
+router.post('/nft/readAllLogs', [requireAdmin], nftSnipper.readAllLogs);
 router.get('/nft/getbots', [], nftSnipper.getBots);
 //pancake
 router.post('/pan/addBot', [requireAuth, requireSniper], pancakeSnipper.addBot);
