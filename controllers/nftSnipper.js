@@ -266,7 +266,6 @@ let getPlan = async (publicKey) => {
     return [];
   }
 };
-let getLogs = async (publicKey) => {};
 
 //connected with router
 exports.setSocket = (ioOb, socket) => {

@@ -19,6 +19,7 @@ const uniswapSnipper = require('./controllers/uniswapSnipper');
 const presaleSnipper = require('./controllers/presaleSnipper');
 const swing = require('./controllers/swing');
 const walletController = require('./controllers/walletController');
+const icyController = require('./controllers/icyController');
 
 const router = require('express').Router();
 const path = require('path');
@@ -33,7 +34,7 @@ router.post('/nft/readPlan', [requireAuth, requireNFT], nftSnipper.readPlan);
 router.post('/nft/readLog', [requireAuth, requireNFT], nftSnipper.readLog);
 router.post('/nft/readAllPlans', [requireAdmin], nftSnipper.readAllPlans);
 router.post('/nft/readAllLogs', [requireAdmin], nftSnipper.readAllLogs);
-router.get('/nft/getbots', [], nftSnipper.getBots);
+router.get('/nft/getbots', [], nftSnipper.getBots); //~~~~~~
 //pancake
 router.post('/pan/addBot', [requireAuth, requireSniper], pancakeSnipper.addBot);
 router.post('/pan/delBot', [requireAuth], pancakeSnipper.delBot);
@@ -60,6 +61,9 @@ router.post('/swing/del', [requireAuth], swing.del);
 //wallets
 router.post('/wallet/read', [requireAdmin], walletController.read);
 router.post('/wallet/lock', [requireAdmin], walletController.lock);
+//icy
+router.post('/icy/getTrendingCollections', [requireAuth], icyController.getTrendingCollections);
+router.post('/icy/getContractInfo', [requireAuth], icyController.getContractInfo);
 
 module.exports = (app, io) => {
   app.use('/api', router);

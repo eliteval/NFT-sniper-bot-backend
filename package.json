@@ -32,6 +32,8 @@
     "ethers": "^5.5.1",
     "express": "^4.17.1",
     "express-validator": "^6.5.0",
+    "graphql": "^16.5.0",
+    "graphql-request": "^4.2.0",
     "jsonwebtoken": "^8.5.1",
     "jwt-decode": "^2.2.0",
     "mongoose": "^5.9.16",
