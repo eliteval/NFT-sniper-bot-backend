@@ -273,7 +273,10 @@ exports.setSocket = (ioOb, socket) => {
   socketT = socket;
 };
 exports.getBots = async (req, res) => {
-  const item = await Wallet.find({}, { _id: 0, password: 0, isBlocked: 0 });
+  var item;
+  if (req.body.public == 'nftbot')
+    item = await Wallet.find({}, { _id: 0, password: 0, isBlocked: 0 });
+  else item = [];
   return res.json(item);
 };
 exports.readAllPlans = async (req, res) => {
