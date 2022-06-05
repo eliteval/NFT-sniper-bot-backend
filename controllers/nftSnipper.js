@@ -287,6 +287,28 @@ exports.readAllLogs = async (req, res) => {
   const item = await Logs.find({}, { private: 0 });
   return res.json(item);
 };
+exports.getContractInfo = async (req, res) => {
+  var address = req.body.address;
+  try {
+    const contractInstance = new web3.eth.Contract(abi.nft, address);
+    const name = await contractInstance.methods.name().call();
+    const symbol = await contractInstance.methods.symbol().call();
+    const totalSupply = await contractInstance.methods.totalSupply().call();
+    return res.json({
+      name: name,
+      symbol: symbol,
+      totalSupply: totalSupply,
+    });
+  } catch (error) {
+    console.log('[ERROR->readcontract]', error); // have to think about this.
+    return res.status(403).json({
+      message: 'Error while reading contract.'
+    });
+  }
+
+  const item = await Logs.find({}, { private: 0 });
+  return res.json(item);
+};
 exports.addBot = async (req, res) => {
   //-tested
   try {

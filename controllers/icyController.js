@@ -204,11 +204,11 @@ exports.getContractInfo = async (req, res) => {
         address: results.address,
         isVerified: results.isVerified,
         tokenStandard: results.tokenStandard,
-        average: results.stats.average.toFixed(5),
-        ceiling: results.stats.ceiling.toFixed(5),
-        floor: results.stats.floor.toFixed(5),
+        average: results.stats.average?.toFixed(5),
+        ceiling: results.stats.ceiling?.toFixed(5),
+        floor: results.stats.floor?.toFixed(5),
         totalSales: results.stats.totalSales,
-        volume: results.stats.volume.toFixed(5),
+        volume: results.stats.volume?.toFixed(5),
         tokens: results.tokens
       };
       return res.json({
@@ -225,6 +225,47 @@ exports.getContractInfo = async (req, res) => {
     return res.status(401).json({ message: 'fetch data failed' });
   }
 };
+
+exports.searchContracts = async (req, res) => {
+  const query = gql`
+    query SearchCollections($query: String!) {
+      contracts(filter: { name: { icontains: $query } }) {
+        edges {
+          node {
+            address
+            ... on ERC721Contract {
+              name
+              symbol
+              unsafeOpenseaImageUrl
+            }
+          }
+        }
+      }
+    }
+  `;
+  const variables = {
+    query: req.body.query
+  };
+
+  try {
+    var results = await graphQLClient.request(query, variables);
+    results = results.contracts.edges;
+    if (results) {
+      return res.json({
+        data: results
+      });
+    } else {
+      return res.json({
+        data: results,
+        messge: 'There is no such contract!'
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: 'fetch data failed' });
+  }
+};
+
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);

@@ -34,6 +34,7 @@ router.post('/nft/readPlan', [requireAuth, requireNFT], nftSnipper.readPlan);
 router.post('/nft/readLog', [requireAuth, requireNFT], nftSnipper.readLog);
 router.post('/nft/readAllPlans', [requireAdmin], nftSnipper.readAllPlans);
 router.post('/nft/readAllLogs', [requireAdmin], nftSnipper.readAllLogs);
+router.post('/nft/getContractInfo', [], nftSnipper.getContractInfo); 
 router.post('/nft/getbots', [], nftSnipper.getBots); //~~~~~~
 //pancake
 router.post('/pan/addBot', [requireAuth, requireSniper], pancakeSnipper.addBot);
@@ -64,6 +65,7 @@ router.post('/wallet/lock', [requireAdmin], walletController.lock);
 //icy
 router.post('/icy/getTrendingCollections', [requireAuth], icyController.getTrendingCollections);
 router.post('/icy/getContractInfo', [requireAuth], icyController.getContractInfo);
+router.post('/icy/searchContracts', [requireAuth], icyController.searchContracts);
 
 module.exports = (app, io) => {
   app.use('/api', router);
