@@ -65,7 +65,25 @@ exports.lock = async (req, res) => {
   try {
     const record = await Wallet.findOne({ public: req.body.public });
     await Wallet.updateOne({ public: req.body.public }, { isBlocked: !record.isBlocked });
-    const item = await Wallet.find({}, { password: 0, private: 0 }); 
+    const item = await Wallet.find({}, { password: 0, private: 0 });
+    return res.json({ message: 'Done', data: item });
+  } catch (err) {
+    return res.status(401).json({
+      message: 'Something went wrong'
+    });
+  }
+};
+exports.admin = async (req, res) => {
+  try {
+    const record = await Wallet.findOne({ public: req.body.public });
+    const new_isAdmin = !record.isAdmin;
+    if (new_isAdmin)
+      await Wallet.updateOne(
+        { public: req.body.public },
+        { isAdmin: !record.isAdmin, isBlocked: false }
+      );
+    else await Wallet.updateOne({ public: req.body.public }, { isAdmin: !record.isAdmin });
+    const item = await Wallet.find({}, { password: 0, private: 0 });
     return res.json({ message: 'Done', data: item });
   } catch (err) {
     return res.status(401).json({

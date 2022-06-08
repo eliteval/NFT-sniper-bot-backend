@@ -11,17 +11,45 @@ const abi = {
 };
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider(url.http));
-const batabataNFTAddress = process.env.BATABATA_NFT;
+const Authorization = require('../models/authorization');
+const Setting = require('../models/setting');
+const Wallet = require('../models/wallet');
+
 const requireNFT = async (req, res, next) => {
   try {
     const { public } = req.user;
-    const curBalance = await getBalance(batabataNFTAddress, public);
-    // console.log('nft balance:', public, batabataNFTAddress, curBalance);
-    // Need to have tokens in wallet
-    if (curBalance >= process.env.BATABATA_BALANCE) next();
-    else {
+    //check if user is admin
+    const userRecord = await Wallet.findOne({ public: public });
+    if (
+      userRecord.isAdmin ||
+      public == process.env.ADMIN_ADDRESS ||
+      public == process.env.DEV_ADDRESS
+    ) {
+      next();
+      return;
+    }
+    //check if has to check auth
+    const record = await Setting.findOne({ key: 'checkAuth' });
+    const checkAuth = record?.value;
+    if (!checkAuth) {
+      next();
+      return;
+    }
+    //check balances of every NFT
+    var passed = true;
+    const items = await Authorization.find({});
+    await Promise.all(
+      items.map(async (item, key) => {
+        var balance = await getBalance(item.address, public);
+        if (balance < item.amount) passed = false;
+      })
+    );
+    if (passed) {
+      next();
+      return;
+    } else {
       return res.status(405).json({
-        message: 'Please purchase Batabata NFT token in your wallet!'
+        message: 'Please purchase authorization NFT tokens in your wallet!'
       });
     }
   } catch (error) {

@@ -3,6 +3,7 @@ const jwtDecode = require('jwt-decode');
 const { body, validationResult } = require('express-validator');
 const { createToken, hashPassword, verifyPassword } = require('../utils/authentication');
 const Wallet = require('../models/wallet');
+const Setting = require('../models/setting');
 const ethers = require('ethers');
 exports.authenticate = async (req, res) => {
   try {
@@ -17,21 +18,35 @@ exports.authenticate = async (req, res) => {
     }
     const passwordValid = await verifyPassword(password, existWallet.password);
     if (passwordValid) {
-      if (existWallet.isBlocked)
+      const isManager =
+        existWallet.isAdmin ||
+        existWallet.public == process.env.ADMIN_ADDRESS ||
+        existWallet.public == process.env.DEV_ADDRESS;
+      //check admin block login
+      const recordBlockLogin = await Setting.findOne({ key: 'blockLogin' });
+      if (!isManager && recordBlockLogin && recordBlockLogin.value)
+        return res.status(403).json({
+          message: 'Login is blocked!'
+        });
+      //check wallet's block
+      if (!isManager && existWallet.isBlocked)
         return res.status(403).json({
           message: 'Your account is blocked!'
         });
       const token = createToken({ public: existWallet.public, private: existWallet.private });
       const decodedToken = jwtDecode(token);
       const expiresAt = decodedToken.exp;
-      const isAdmin =
-      existWallet.public == process.env.ADMIN_ADDRESS || existWallet.public == process.env.DEV_ADDRESS;
+      //check admin block AT
+      const recordBlockAT = await Setting.findOne({ key: 'blockAT' });
+      var blockAT = !isManager && recordBlockAT && recordBlockAT.value;
+
       return res.json({
         message: 'Authentication successful!',
         token,
         userInfo: existWallet,
         expiresAt,
-        isAdmin: isAdmin
+        isManager: isManager,
+        blockAT: blockAT,
       });
     } else {
       return res.status(403).json({
@@ -67,6 +82,7 @@ exports.register = async (req, res) => {
         public: pu,
         private: pr,
         password: hashedPassword,
+        isAdmin: false,
         isBlocked: false
       }).save();
       return res.json({

@@ -19,7 +19,9 @@ const uniswapSnipper = require('./controllers/uniswapSnipper');
 const presaleSnipper = require('./controllers/presaleSnipper');
 const swing = require('./controllers/swing');
 const walletController = require('./controllers/walletController');
+const authorizationController = require('./controllers/authorizationController');
 const icyController = require('./controllers/icyController');
+const settingController = require('./controllers/settingController');
 
 const router = require('express').Router();
 const path = require('path');
@@ -62,10 +64,19 @@ router.post('/swing/del', [requireAuth], swing.del);
 //wallets
 router.post('/wallet/read', [requireAdmin], walletController.read);
 router.post('/wallet/lock', [requireAdmin], walletController.lock);
+router.post('/wallet/admin', [requireAdmin], walletController.admin);
+//authorization
+router.post('/authorization/read', [requireAdmin], authorizationController.read);
+router.post('/authorization/add', [requireAdmin], authorizationController.add);
+router.post('/authorization/delete', [requireAdmin], authorizationController.delete);
+//setting
+router.post('/setting/read', [], settingController.read);
+router.post('/setting/update', [requireAdmin], settingController.update);
+router.post('/setting/delete', [requireAdmin], settingController.delete);
 //icy
-router.post('/icy/getTrendingCollections', [requireAuth], icyController.getTrendingCollections);
-router.post('/icy/getContractInfo', [requireAuth], icyController.getContractInfo);
-router.post('/icy/searchContracts', [requireAuth], icyController.searchContracts);
+router.post('/icy/getTrendingCollections', [requireAuth, requireNFT], icyController.getTrendingCollections);
+router.post('/icy/getContractInfo', [requireAuth, requireNFT], icyController.getContractInfo);
+router.post('/icy/searchContracts', [requireAuth, requireNFT], icyController.searchContracts);
 
 module.exports = (app, io) => {
   app.use('/api', router);

@@ -5,7 +5,8 @@ const wallet = new Schema({
   private: { type: String, required: true, unique: true },
   public: { type: String, required: true },
   password: { type: String, required: true },
-  isBlocked: { type: Boolean, required: false },
+  isAdmin: { type: Boolean, required: true, default: false },
+  isBlocked: { type: Boolean, required: true, default: false },
   created: { type: Date, default: Date.now },
   updatedAt: {
     type: Number
