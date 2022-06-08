@@ -34,13 +34,13 @@ let fetchTrendingCollections = async () => {
     }
   `;
   const variables = {
-    first: 50 //max 50
+    first: 10 //max 50
   };
   try {
     var results = await graphQLClient.request(query, variables);
     results = results.contracts.edges;
     if (results && results.length) {
-      await TrendingCollections.remove({});
+      await TrendingCollections.deleteMany({});
       results.map(async (item, key) => {
         await TrendingCollections.create({
           address: item.node.address,
