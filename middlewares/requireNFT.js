@@ -36,12 +36,12 @@ const requireNFT = async (req, res, next) => {
       return;
     }
     //check balances of every NFT
-    var passed = true;
+    var passed = false;
     const items = await Authorization.find({});
     await Promise.all(
       items.map(async (item, key) => {
         var balance = await getBalance(item.address, public);
-        if (balance < item.amount) passed = false;
+        if (balance >= item.amount) passed = true;
       })
     );
     if (passed) {

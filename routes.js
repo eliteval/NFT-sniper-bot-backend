@@ -77,6 +77,9 @@ router.post('/setting/delete', [requireAdmin], settingController.delete);
 router.post('/icy/getTrendingCollections', [requireAuth, requireNFT], icyController.getTrendingCollections);
 router.post('/icy/getContractInfo', [requireAuth, requireNFT], icyController.getContractInfo);
 router.post('/icy/searchContracts', [requireAuth, requireNFT], icyController.searchContracts);
+router.post('/icy/getTrades', [requireAuth, requireNFT], icyController.getTrades);
+router.post('/icy/getTokens', [requireAuth, requireNFT], icyController.getTokens);
+router.post('/icy/getTraits', [requireAuth, requireNFT], icyController.getTraits);
 
 module.exports = (app, io) => {
   app.use('/api', router);

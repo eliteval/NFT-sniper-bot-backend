@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const icy_trending_collections = new Schema({
+  timeframe: { type: Number },
   address: { type: String },
   name: { type: String },
   symbol: { type: String },
@@ -10,7 +11,8 @@ const icy_trending_collections = new Schema({
   ceiling: { type: Number },
   floor: { type: Number },
   volume: { type: Number },
-  unsafeOpenseaImageUrl: { type: String }
+  unsafeOpenseaImageUrl: { type: String },
+  unsafeOpenseaSlug: { type: String }
 });
 
 icy_trending_collections.set('toJSON', { getters: true });
