@@ -25,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "bitcoind-rpc": "0.8.1",
     "body-parser": "^1.19.0",
+    "cli-progress": "^3.11.1",
     "clone": "^2.1.2",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",

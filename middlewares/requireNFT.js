@@ -65,7 +65,6 @@ let getBalance = async (addr, publicKey) => {
   try {
     balance = await contractInstance.methods.balanceOf(publicKey).call();
   } catch (error) {
-    console.log(error);
     return 0;
   }
   return balance;

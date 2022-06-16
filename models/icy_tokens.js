@@ -6,6 +6,7 @@ const icy_tokens = new Schema({
   name: { type: String },
   symbol: { type: String },
   token_id: { type: Number },
+  owner: { type: String },
   token_uri: { type: String },
   metadata: { type: Object },
   contract_type: { type: String },

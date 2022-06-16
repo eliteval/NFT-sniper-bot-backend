@@ -3,6 +3,8 @@ const TradeTransactions = require('../models/icy_trade_transactions');
 const Tokens = require('../models/icy_tokens');
 const Traits = require('../models/icy_traits');
 const axios = require('axios');
+const cliProgress = require('cli-progress');
+const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 const { GraphQLClient, gql } = require('graphql-request');
 const graphQLClient = new GraphQLClient('https://graphql.icy.tools/graphql', {
   headers: {
@@ -14,9 +16,9 @@ const graphQLClient = new GraphQLClient('https://graphql.icy.tools/graphql', {
 const Moralis = require('moralis/node');
 
 /* Moralis init code */
-const serverUrl = 'https://ehc8jexzkct0.usemoralis.com:2053/server';
-const appId = '8v6Eym9LSfNhLO1kWg7HtsgporbJ3BeTQrAQdU42';
-const moralisSecret = 'Kmli4JLRwzUp6P3aVMuBAbI4iR9iApVvVSVyG39aMo16eTQnTbaYWFu2cmZVjWKm';
+const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
+const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
+const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
 (async () => {})();
 var totaltrades = 0;
@@ -24,15 +26,18 @@ var totaltokens = 0;
 
 let cronFetchTrendings = async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
+
   var starttime = new Date();
   console.log('DB updating trending collections', starttime);
   totaltrades = 0;
   totaltokens = 0;
   await fetchTrendingCollections(1);
-  // await fetchTrendingCollections(4);
-  // await fetchTrendingCollections(1 * 24);
-  // await fetchTrendingCollections(7 * 24);
+  await fetchTrendingCollections(4);
+  await fetchTrendingCollections(1 * 24);
+  await fetchTrendingCollections(7 * 24);
 
+  await TrendingCollections.deleteMany({ isSync: true });
+  await TrendingCollections.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
   await TradeTransactions.deleteMany({ isSync: true });
   await TradeTransactions.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
   await Tokens.deleteMany({ isSync: true });
@@ -98,11 +103,19 @@ let fetchTrendingCollections = async (timeframe) => {
           average: item.node.stats.average.toFixed(5),
           ceiling: item.node.stats.ceiling.toFixed(5),
           floor: item.node.stats.floor.toFixed(5),
-          volume: item.node.stats.volume.toFixed(5)
+          volume: item.node.stats.volume.toFixed(5),
+          isSync: false
         });
-        await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
-        await fetchTokens(item.node.address);
-        await fetchTrades(item.node.address);
+
+        var count = await TrendingCollections.find({
+          address: item.node.address,
+          isSync: false
+        }).countDocuments();
+        if (count == 1) {
+          await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
+          await fetchTokens(item.node.address);
+          await fetchTrades(item.node.address);
+        }
         return 1;
       }, Promise.resolve(''));
     } else {
@@ -118,6 +131,8 @@ let fetchTraits = async (address, slug) => {
   try {
     var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
     var traits = result.data.collection.traits;
+
+    var total = 0;
     for (const type in traits) {
       var typearr = traits[type];
       var totalamount = 0;
@@ -136,8 +151,10 @@ let fetchTraits = async (address, slug) => {
           rarity,
           isSync: false
         });
+        total++;
       }
     }
+    console.log(`${slug}, tratits saved,${total} values`);
   } catch (error) {
     console.error(error.message);
   }
@@ -185,23 +202,28 @@ let fetchTokens = async (address) => {
     address: address,
     cursor: '',
     // limit: 100,
-    from_date: new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000),
     chain: 'eth'
   };
-  var result = await Moralis.Web3API.token.getAllTokenIds(options);
+  var result = await Moralis.Web3API.token.getNFTOwners(options);
   data = data.concat(result.result);
   totaltokens += result.total;
   var ttt = result.total;
-
+  var progress = result.result.length;
+  bar1.start(ttt, progress);
   while (result.next && result.cursor) {
-    result = await Moralis.Web3API.token.getAllTokenIds({ ...options, cursor: result.cursor });
+    result = await Moralis.Web3API.token.getNFTOwners({ ...options, cursor: result.cursor });
     data = data.concat(result.result);
+    progress += result.result.length;
+    bar1.update(progress);
   }
-
+  bar1.stop();
   data.map(async (item, key) => {
     var rarity_score = 1;
+    var traitsCount = await Traits.find({
+      address: item.token_address
+    }).countDocuments();
     // Calculate rarity score, rarity rank for each token
-    if (item.metadata) {
+    if (item.metadata && traitsCount) {
       var metadata = JSON.parse(item.metadata);
       var attributes = metadata.attributes;
       if (attributes) {
@@ -214,7 +236,7 @@ let fetchTokens = async (address) => {
           var record = await Traits.findOne({
             address: item.token_address,
             type: type,
-            value: value.toLowerCase()
+            value: value?.toString().toLowerCase()
           });
           //calculate score
           var trait_rarity_socre = record ? record.rarity : 0.001;
@@ -229,6 +251,7 @@ let fetchTokens = async (address) => {
       name: item.name,
       symbol: item.symbol,
       token_id: item.token_id,
+      owner: item.owner_of,
       token_uri: item.token_uri,
       metadata: item.metadata,
       contract_type: item.contract_type,
@@ -434,7 +457,7 @@ exports.searchContracts = async (req, res) => {
 };
 
 (async () => {
-  await cronFetchTrendings();
+  // await cronFetchTrendings();
 
   setInterval(async () => {
     await cronFetchTrendings();

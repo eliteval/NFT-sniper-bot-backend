@@ -12,7 +12,8 @@ const icy_trending_collections = new Schema({
   floor: { type: Number },
   volume: { type: Number },
   unsafeOpenseaImageUrl: { type: String },
-  unsafeOpenseaSlug: { type: String }
+  unsafeOpenseaSlug: { type: String },
+  isSync: { type: Boolean }
 });
 
 icy_trending_collections.set('toJSON', { getters: true });
