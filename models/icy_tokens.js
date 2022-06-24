@@ -3,9 +3,10 @@ const Schema = mongoose.Schema;
 
 const icy_tokens = new Schema({
   token_address: { type: String },
-  name: { type: String },
-  symbol: { type: String },
   token_id: { type: Number },
+  name: { type: String },
+  image: { type: String },
+  attributes: { type: Array, default: [] },
   owner: { type: String },
   token_uri: { type: String },
   metadata: { type: Object },

@@ -22,15 +22,12 @@ const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
 const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
+const top_collections_num = 1;
+
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
 
-  // console.log('test start', new Date());
-  // var starttime = new Date();
-  // await fetchTokens('0x0b3ae1dcc8ad62c1ab8693a9dfbfa246fc20482e');
-  // console.log('test end', new Date());
-
-  await cronFetchTrendings();
+  // await cronFetchTrendings();
 
   setInterval(async () => {
     await cronFetchTrendings();
@@ -52,18 +49,34 @@ let cronFetchTrendings = async () => {
   await Trades.updateMany({}, { isLoading: false }, { upsert: true });
 
   await fetchTrendingCollections(1);
-  await fetchTrendingCollections(4);
-  await fetchTrendingCollections(1 * 24);
-  await fetchTrendingCollections(7 * 24);
+  // await fetchTrendingCollections(4);
+  // await fetchTrendingCollections(1 * 24);
+  // await fetchTrendingCollections(7 * 24);
 
   await TrendingCollections.deleteMany({ isLoading: false });
-  await TrendingCollections.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
+  await TrendingCollections.updateMany(
+    { isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
   await Trades.deleteMany({ isLoading: false });
-  await Trades.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
+  await Trades.updateMany(
+    { isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
   await Tokens.deleteMany({ isLoading: false });
-  await Tokens.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
+  await Tokens.updateMany(
+    { isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
   await Traits.deleteMany({ isLoading: false });
-  await Traits.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
+  await Traits.updateMany(
+    { isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
 
   console.log('total trades: ', totaltrades);
   console.log('total tokens: ', totaltokens);
@@ -96,86 +109,84 @@ let fetchTrendingCollections = async (timeframe) => {
     }
   `;
   const variables = {
-    first: 10, //max 50
+    first: top_collections_num, //max 50
     gtTime: new Date(new Date().getTime() - timeframe * 60 * 60 * 1000)
   };
-  console.log('fetching top collections for timeframe ', timeframe);
-  try {
-    var results = await graphQLClient.request(query, variables);
-    results = results.contracts.edges;
-    if (results && results.length) {
-      await results.reduce(async (accum, item) => {
-        // don't progress further until the last iteration has finished:
-        await accum;
-        console.log(item.node.address, new Date());
-        await TrendingCollections.create({
-          timeframe: timeframe,
-          address: item.node.address,
-          name: item.node.name,
-          symbol: item.node.symbol,
-          unsafeOpenseaImageUrl: item.node.unsafeOpenseaImageUrl,
-          unsafeOpenseaSlug: item.node.unsafeOpenseaSlug,
-          totalSales: item.node.stats.totalSales,
-          average: item.node.stats.average.toFixed(5),
-          ceiling: item.node.stats.ceiling.toFixed(5),
-          floor: item.node.stats.floor.toFixed(5),
-          volume: item.node.stats.volume.toFixed(5),
-          isSync: false,
-          isLoading: true
-        });
-        //count current loading same contract
-        var count = await TrendingCollections.find({
-          address: item.node.address,
-          isLoading: true
-        }).countDocuments();
-        if (count == 1) {
-          await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
-          await fetchTokens(item.node.address);
-          await fetchTrades(item.node.address);
-        }
-        return 1;
-      }, Promise.resolve(''));
-    } else {
-      console.log('icy fetch data error');
-    }
-  } catch (error) {
-    console.log(error);
+  console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
+
+  var results = await graphQLClient.request(query, variables);
+  results = results.contracts.edges;
+  if (results && results.length) {
+    await results.reduce(async (accum, item) => {
+      // don't progress further until the last iteration has finished:
+      await accum;
+      console.log(item.node.address, new Date());
+      await TrendingCollections.create({
+        timeframe: timeframe,
+        address: item.node.address,
+        name: item.node.name,
+        symbol: item.node.symbol,
+        unsafeOpenseaImageUrl: item.node.unsafeOpenseaImageUrl,
+        unsafeOpenseaSlug: item.node.unsafeOpenseaSlug,
+        totalSales: item.node.stats.totalSales,
+        average: item.node.stats.average.toFixed(5),
+        ceiling: item.node.stats.ceiling.toFixed(5),
+        floor: item.node.stats.floor.toFixed(5),
+        volume: item.node.stats.volume.toFixed(5),
+        isSync: false,
+        isLoading: true
+      });
+      //count current loading same contract
+      var count = await TrendingCollections.find({
+        address: item.node.address,
+        isLoading: true
+      }).countDocuments();
+      if (count == 1) {
+        // await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
+        // await fetchTokens(item.node.address);
+        // await fetchTrades(item.node.address);
+
+        await fetchTraits('0xcc15b249f8ac06b4a56deb5627afcef061df45a4', 'spunmonkes');
+        await fetchTokens('0xcc15b249f8ac06b4a56deb5627afcef061df45a4');
+        await fetchTrades('0xcc15b249f8ac06b4a56deb5627afcef061df45a4');
+      }
+      return 1;
+    }, Promise.resolve(''));
+  } else {
+    console.log('icy fetch data error');
   }
 };
 
 let fetchTraits = async (address, slug) => {
   if (!slug) return;
-  try {
-    var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
-    var traits = result.data.collection.traits;
 
-    var total = 0;
-    for (const type in traits) {
-      var typearr = traits[type];
-      var totalamount = 0;
-      for (const value in typearr) {
-        var amount = typearr[value];
-        totalamount += amount;
-      }
-      for (const value in typearr) {
-        var amount = typearr[value];
-        var rarity = amount / totalamount;
-        await Traits.create({
-          address,
-          type,
-          value,
-          amount,
-          rarity,
-          isSync: false,
-          isLoading: true
-        });
-        total++;
-      }
+  var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
+  var traits = result.data.collection.traits;
+
+  var total = 0;
+  for (const type in traits) {
+    var typearr = traits[type];
+    var totalamount = 0;
+    for (const value in typearr) {
+      var amount = typearr[value];
+      totalamount += amount;
     }
-    console.log(`${slug}, tratits saved,${total} values`);
-  } catch (error) {
-    console.error(error.message);
+    for (const value in typearr) {
+      var amount = typearr[value];
+      var rarity = amount / totalamount;
+      await Traits.create({
+        address,
+        type,
+        value,
+        amount,
+        rarity,
+        isSync: false,
+        isLoading: true
+      });
+      total++;
+    }
   }
+  console.log(`${slug}, traits saved,${total} values`);
 };
 
 let fetchTokens = async (address) => {
@@ -190,18 +201,20 @@ let fetchTokens = async (address) => {
   var result = await Moralis.Web3API.token.getNFTOwners(options);
   data = data.concat(result.result);
   totaltokens += result.total;
+
   var ttt = result.total; //progress bar
   var progress = result.result.length; //progress bar
   bar1.start(ttt, progress); //progress bar
-  while (result.next && result.cursor) {
-    result = await Moralis.Web3API.token.getNFTOwners({
-      ...options,
-      cursor: result.cursor
-    });
-    data = data.concat(result.result);
-    progress += result.result.length; //progress bar
-    bar1.update(progress); //progress bar
-  }
+
+  // while (result.next && result.cursor) {
+  //   result = await Moralis.Web3API.token.getNFTOwners({
+  //     ...options,
+  //     cursor: result.cursor
+  //   });
+  //   data = data.concat(result.result);
+  //   progress += result.result.length; //progress bar
+  //   bar1.update(progress); //progress bar
+  // }
   bar1.stop(); //progress bar
   console.log('test 1', data.length, new Date());
 
@@ -210,53 +223,59 @@ let fetchTokens = async (address) => {
     address: address,
     isLoading: true
   }).countDocuments();
-  if (traitsCount > 0) {
-    await data.reduce(async (accum, item) => {
-      await accum;
-      var rarity_score = 1;
+  console.log(traitsCount, ' traits');
 
-      if (item.metadata) {
-        var metadata = JSON.parse(item.metadata);
-        var attributes = metadata.attributes;
-        if (attributes) {
-          await attributes.reduce(async (accum, attr) => {
-            // don't progress further until the last iteration has finished:
-            await accum;
-            var type = attr.trait_type;
-            var value = attr.value;
-            //find trait record
-            var record = await Traits.findOne({
-              address: item.token_address,
-              type: type,
-              value: value?.toString().toLowerCase(),
-              isLoading: true
-            });
-            //calculate score
-            var trait_rarity_socre = record ? record.rarity : 0.001;
-            rarity_score *= trait_rarity_socre;
-            console.log('rarity calculated');
-            return 1;
-          }, Promise.resolve(''));
-        }
+  await data.reduce(async (accum, item) => {
+    await accum;
+    var rarity_score = 1;
+    var name;
+    var image;
+    var attributes;
+
+    if (item.metadata && traitsCount > 0) {
+      var metadata = JSON.parse(item.metadata);
+      name = metadata.name;
+      image = metadata.image;
+      image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      attributes = metadata.attributes;
+      if (attributes) {
+        await attributes.reduce(async (accum, attr) => {
+          // don't progress further until the last iteration has finished:
+          await accum;
+          var type = attr.trait_type;
+          var value = attr.value;
+          //find trait record
+          var record = await Traits.findOne({
+            address: item.token_address,
+            type: type,
+            value: value?.toString().toLowerCase(),
+            isLoading: true
+          });
+          //calculate score
+          var trait_rarity_socre = record ? record.rarity : 0.001;
+          rarity_score *= trait_rarity_socre;
+          return 1;
+        }, Promise.resolve(''));
       }
-      // save db
-      await Tokens.create({
-        token_address: item.token_address,
-        name: item.name,
-        symbol: item.symbol,
-        token_id: item.token_id,
-        owner: item.owner_of,
-        token_uri: item.token_uri,
-        metadata: item.metadata,
-        contract_type: item.contract_type,
-        synced_at: item.synced_at,
-        rarity_score: rarity_score,
-        isSync: false,
-        isLoading: true
-      });
-      return 1;
-    }, Promise.resolve(''));
-  }
+    }
+    // save db
+    await Tokens.create({
+      token_address: item.token_address,
+      token_id: item.token_id,
+      name: name,
+      image: image,
+      attributes: attributes,
+      owner: item.owner_of,
+      token_uri: item.token_uri,
+      metadata: item.metadata,
+      contract_type: item.contract_type,
+      synced_at: item.synced_at,
+      rarity_score: rarity_score,
+      isSync: false,
+      isLoading: true
+    });
+    return 1;
+  }, Promise.resolve(''));
 
   console.log('test 2', new Date());
 
@@ -268,7 +287,7 @@ let fetchTokens = async (address) => {
     rarity_score: 1
   });
 
-  await records.reduce(async (accum, record) => {
+  await records.reduce(async (accum, record, key) => {
     await accum;
 
     if (record.rarity_score != 1)
@@ -277,7 +296,7 @@ let fetchTokens = async (address) => {
     return 1;
   }, Promise.resolve(''));
 
-  console.log(address, data.length, 'tokens fetched among ', ttt);
+  console.log(address, data.length, 'tokens fetched among ', ttt, new Date());
 };
 
 let fetchTrades = async (address) => {
@@ -352,28 +371,53 @@ exports.getTraits = async (req, res) => {
 exports.getTokens = async (req, res) => {
   try {
     var address = req.body.address;
+    var pagination = req.body.pagination;
+    var filter = req.body.filter;
+    //declare findquery
+    var findquery = {
+      token_address: address,
+      isSync: true
+    };
+    //attribute query
+    var attributeFilterArr = [];
+    filter.traits.map((item) => {
+      attributeFilterArr.push({
+        trait_type: { $regex: `^${item[0]}$`, $options: '-i' },
+        value: { $regex: `^${item[1]}$`, $options: '-i' }
+      });
+    });
+    if (attributeFilterArr.length)
+      findquery.attributes = {
+        $elemMatch: {
+          $or: attributeFilterArr
+        }
+      };
+    //rarity_rank query
+    var rarity_rank_query = {};
+    if (filter.rank.min) rarity_rank_query.$gte = filter.rank.min;
+    if (filter.rank.max) rarity_rank_query.$lte = filter.rank.max;
+    if (filter.rank.min || filter.rank.max) findquery.rarity_rank = rarity_rank_query;
+
+    // console.log(findquery);
+
+    //find
+    var total = await Tokens.find(findquery).countDocuments();
     let item = JSON.parse(
       JSON.stringify(
-        await Tokens.find(
-          { token_address: address, isSync: true },
-          {
-            _id: 0,
-            contract_type: 0,
-            isSync: 0,
-            rarity_score: 0,
-            symbol: 0,
-            token_address: 0,
-            token_uri: 0
-          }
-        ).sort({
-          token_id: 1
-        })
+        await Tokens.find(findquery)
+          .sort({
+            token_id: 0
+          })
+          .skip((pagination.pagenumber - 1) * pagination.perpage)
+          .limit(pagination.perpage)
       )
     );
     return res.json({
-      data: item
+      data: item,
+      total: total
     });
   } catch (err) {
+    console.log(err.message);
     return res.status(401).json({
       message: 'Read failed'
     });
@@ -388,6 +432,35 @@ exports.getTrades = async (req, res) => {
       data: item
     });
   } catch (err) {
+    return res.status(401).json({
+      message: 'Read failed'
+    });
+  }
+};
+
+exports.getHolders = async (req, res) => {
+  try {
+    var address = req.body.address;
+    let item = JSON.parse(
+      JSON.stringify(
+        await Tokens.aggregate([
+          { $match: { isSync: true } },
+          { $group: { _id: '$owner', count: { $sum: 1 } } }
+        ]).sort({
+          count: -1
+        })
+      )
+    );
+    var tokens_count = await Tokens.find({
+      token_address: address,
+      isSync: true
+    }).countDocuments();
+    return res.json({
+      data: item,
+      tokens_count: tokens_count
+    });
+  } catch (err) {
+    console.log(err.message);
     return res.status(401).json({
       message: 'Read failed'
     });
