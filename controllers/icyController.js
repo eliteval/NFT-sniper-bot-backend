@@ -22,12 +22,12 @@ const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
 const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
-const top_collections_num = 1;
+const top_collections_num = 10;
 
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
 
-  // await cronFetchTrendings();
+  await cronFetchTrendings();
 
   setInterval(async () => {
     await cronFetchTrendings();
@@ -49,9 +49,9 @@ let cronFetchTrendings = async () => {
   await Trades.updateMany({}, { isLoading: false }, { upsert: true });
 
   await fetchTrendingCollections(1);
-  // await fetchTrendingCollections(4);
-  // await fetchTrendingCollections(1 * 24);
-  // await fetchTrendingCollections(7 * 24);
+  await fetchTrendingCollections(4);
+  await fetchTrendingCollections(1 * 24);
+  await fetchTrendingCollections(7 * 24);
 
   await TrendingCollections.deleteMany({ isLoading: false });
   await TrendingCollections.updateMany(
@@ -142,13 +142,9 @@ let fetchTrendingCollections = async (timeframe) => {
         isLoading: true
       }).countDocuments();
       if (count == 1) {
-        // await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
-        // await fetchTokens(item.node.address);
-        // await fetchTrades(item.node.address);
-
-        await fetchTraits('0xcc15b249f8ac06b4a56deb5627afcef061df45a4', 'spunmonkes');
-        await fetchTokens('0xcc15b249f8ac06b4a56deb5627afcef061df45a4');
-        await fetchTrades('0xcc15b249f8ac06b4a56deb5627afcef061df45a4');
+        await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
+        await fetchTokens(item.node.address);
+        await fetchTrades(item.node.address);
       }
       return 1;
     }, Promise.resolve(''));
@@ -206,15 +202,15 @@ let fetchTokens = async (address) => {
   var progress = result.result.length; //progress bar
   bar1.start(ttt, progress); //progress bar
 
-  // while (result.next && result.cursor) {
-  //   result = await Moralis.Web3API.token.getNFTOwners({
-  //     ...options,
-  //     cursor: result.cursor
-  //   });
-  //   data = data.concat(result.result);
-  //   progress += result.result.length; //progress bar
-  //   bar1.update(progress); //progress bar
-  // }
+  while (result.next && result.cursor) {
+    result = await Moralis.Web3API.token.getNFTOwners({
+      ...options,
+      cursor: result.cursor
+    });
+    data = data.concat(result.result);
+    progress += result.result.length; //progress bar
+    bar1.update(progress); //progress bar
+  }
   bar1.stop(); //progress bar
   console.log('test 1', data.length, new Date());
 
