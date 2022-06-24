@@ -13,7 +13,8 @@ const icy_trending_collections = new Schema({
   volume: { type: Number },
   unsafeOpenseaImageUrl: { type: String },
   unsafeOpenseaSlug: { type: String },
-  isSync: { type: Boolean }
+  isSync: { type: Boolean },
+  isLoading: { type: Boolean }
 });
 
 icy_trending_collections.set('toJSON', { getters: true });

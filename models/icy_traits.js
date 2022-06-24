@@ -7,7 +7,8 @@ const icy_traits = new Schema({
   value: { type: String },
   amount: { type: Number },
   rarity: { type: Number },
-  isSync: { type: Boolean }
+  isSync: { type: Boolean },
+  isLoading: { type: Boolean }
 });
 
 icy_traits.set('toJSON', { getters: true });

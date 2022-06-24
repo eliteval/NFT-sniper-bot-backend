@@ -1,8 +1,10 @@
 const TrendingCollections = require('../models/icy_trending_collections');
-const TradeTransactions = require('../models/icy_trade_transactions');
+const Trades = require('../models/icy_trades');
 const Tokens = require('../models/icy_tokens');
 const Traits = require('../models/icy_traits');
 const axios = require('axios');
+const ethers = require('ethers');
+
 const cliProgress = require('cli-progress');
 const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 const { GraphQLClient, gql } = require('graphql-request');
@@ -20,39 +22,54 @@ const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
 const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
-(async () => {})();
+(async () => {
+  await Moralis.start({ serverUrl, appId, moralisSecret });
+
+  // console.log('test start', new Date());
+  // var starttime = new Date();
+  // await fetchTokens('0x0b3ae1dcc8ad62c1ab8693a9dfbfa246fc20482e');
+  // console.log('test end', new Date());
+
+  await cronFetchTrendings();
+
+  setInterval(async () => {
+    await cronFetchTrendings();
+  }, 60 * 60 * 1000);
+})();
+
 var totaltrades = 0;
 var totaltokens = 0;
 
 let cronFetchTrendings = async () => {
-  await Moralis.start({ serverUrl, appId, moralisSecret });
-
   var starttime = new Date();
-  console.log('DB updating trending collections', starttime);
+  console.log('DB updating Analysis', starttime);
   totaltrades = 0;
   totaltokens = 0;
+
+  await TrendingCollections.updateMany({}, { isLoading: false }, { upsert: true });
+  await Traits.updateMany({}, { isLoading: false }, { upsert: true });
+  await Tokens.updateMany({}, { isLoading: false }, { upsert: true });
+  await Trades.updateMany({}, { isLoading: false }, { upsert: true });
+
   await fetchTrendingCollections(1);
   await fetchTrendingCollections(4);
   await fetchTrendingCollections(1 * 24);
   await fetchTrendingCollections(7 * 24);
 
-  await TrendingCollections.deleteMany({ isSync: true });
+  await TrendingCollections.deleteMany({ isLoading: false });
   await TrendingCollections.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
-  await TradeTransactions.deleteMany({ isSync: true });
-  await TradeTransactions.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
-  await Tokens.deleteMany({ isSync: true });
+  await Trades.deleteMany({ isLoading: false });
+  await Trades.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
+  await Tokens.deleteMany({ isLoading: false });
   await Tokens.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
-  await Traits.deleteMany({ isSync: true });
+  await Traits.deleteMany({ isLoading: false });
   await Traits.updateMany({ isSync: false }, { isSync: true }, { upsert: true });
 
   console.log('total trades: ', totaltrades);
   console.log('total tokens: ', totaltokens);
-  console.log('DB updated trending collections', starttime, new Date());
+  console.log('DB updated Analysis', starttime, new Date());
 };
 
-/**
- * @param {string} timeframe - hours
- */
 let fetchTrendingCollections = async (timeframe) => {
   const query = gql`
     query TrendingCollections($first: Int, $gtTime: Date) {
@@ -82,12 +99,11 @@ let fetchTrendingCollections = async (timeframe) => {
     first: 10, //max 50
     gtTime: new Date(new Date().getTime() - timeframe * 60 * 60 * 1000)
   };
+  console.log('fetching top collections for timeframe ', timeframe);
   try {
     var results = await graphQLClient.request(query, variables);
     results = results.contracts.edges;
     if (results && results.length) {
-      await TrendingCollections.deleteMany({ timeframe: timeframe });
-      console.log('trending collections records deleted', timeframe);
       await results.reduce(async (accum, item) => {
         // don't progress further until the last iteration has finished:
         await accum;
@@ -104,12 +120,13 @@ let fetchTrendingCollections = async (timeframe) => {
           ceiling: item.node.stats.ceiling.toFixed(5),
           floor: item.node.stats.floor.toFixed(5),
           volume: item.node.stats.volume.toFixed(5),
-          isSync: false
+          isSync: false,
+          isLoading: true
         });
-
+        //count current loading same contract
         var count = await TrendingCollections.find({
           address: item.node.address,
-          isSync: false
+          isLoading: true
         }).countDocuments();
         if (count == 1) {
           await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
@@ -149,7 +166,8 @@ let fetchTraits = async (address, slug) => {
           value,
           amount,
           rarity,
-          isSync: false
+          isSync: false,
+          isLoading: true
         });
         total++;
       }
@@ -158,6 +176,108 @@ let fetchTraits = async (address, slug) => {
   } catch (error) {
     console.error(error.message);
   }
+};
+
+let fetchTokens = async (address) => {
+  var data = [];
+
+  var options = {
+    address: address,
+    cursor: '',
+    // limit: 100,
+    chain: 'eth'
+  };
+  var result = await Moralis.Web3API.token.getNFTOwners(options);
+  data = data.concat(result.result);
+  totaltokens += result.total;
+  var ttt = result.total; //progress bar
+  var progress = result.result.length; //progress bar
+  bar1.start(ttt, progress); //progress bar
+  while (result.next && result.cursor) {
+    result = await Moralis.Web3API.token.getNFTOwners({
+      ...options,
+      cursor: result.cursor
+    });
+    data = data.concat(result.result);
+    progress += result.result.length; //progress bar
+    bar1.update(progress); //progress bar
+  }
+  bar1.stop(); //progress bar
+  console.log('test 1', data.length, new Date());
+
+  // Calculate rarity score, rarity rank for each token
+  var traitsCount = await Traits.find({
+    address: address,
+    isLoading: true
+  }).countDocuments();
+  if (traitsCount > 0) {
+    await data.reduce(async (accum, item) => {
+      await accum;
+      var rarity_score = 1;
+
+      if (item.metadata) {
+        var metadata = JSON.parse(item.metadata);
+        var attributes = metadata.attributes;
+        if (attributes) {
+          await attributes.reduce(async (accum, attr) => {
+            // don't progress further until the last iteration has finished:
+            await accum;
+            var type = attr.trait_type;
+            var value = attr.value;
+            //find trait record
+            var record = await Traits.findOne({
+              address: item.token_address,
+              type: type,
+              value: value?.toString().toLowerCase(),
+              isLoading: true
+            });
+            //calculate score
+            var trait_rarity_socre = record ? record.rarity : 0.001;
+            rarity_score *= trait_rarity_socre;
+            console.log('rarity calculated');
+            return 1;
+          }, Promise.resolve(''));
+        }
+      }
+      // save db
+      await Tokens.create({
+        token_address: item.token_address,
+        name: item.name,
+        symbol: item.symbol,
+        token_id: item.token_id,
+        owner: item.owner_of,
+        token_uri: item.token_uri,
+        metadata: item.metadata,
+        contract_type: item.contract_type,
+        synced_at: item.synced_at,
+        rarity_score: rarity_score,
+        isSync: false,
+        isLoading: true
+      });
+      return 1;
+    }, Promise.resolve(''));
+  }
+
+  console.log('test 2', new Date());
+
+  //give rarity rank
+  var records = await Tokens.find({
+    token_address: address,
+    isLoading: true
+  }).sort({
+    rarity_score: 1
+  });
+
+  await records.reduce(async (accum, record) => {
+    await accum;
+
+    if (record.rarity_score != 1)
+      await Tokens.findOneAndUpdate({ _id: record._id }, { rarity_rank: key + 1 });
+
+    return 1;
+  }, Promise.resolve(''));
+
+  console.log(address, data.length, 'tokens fetched among ', ttt);
 };
 
 let fetchTrades = async (address) => {
@@ -176,11 +296,14 @@ let fetchTrades = async (address) => {
   totaltrades += result.total;
   var ttt = result.total;
   while (result.next) {
-    result = await Moralis.Web3API.token.getNFTTrades({ ...options, cursor: result.cursor });
+    result = await Moralis.Web3API.token.getNFTTrades({
+      ...options,
+      cursor: result.cursor
+    });
     data = data.concat(result.result);
   }
   data.map(async (item, key) => {
-    await TradeTransactions.create({
+    await Trades.create({
       address: address,
       tokenID: item.token_ids[0],
       seller: item.seller_address,
@@ -189,92 +312,19 @@ let fetchTrades = async (address) => {
       transaction: item.transaction_hash,
       marketplace: item.marketplace_address,
       tradeAt: item.block_timestamp,
-      isSync: false
+      isSync: false,
+      isLoading: true
     });
   });
   console.log(address, data.length, 'trades fetched among ', ttt);
 };
 
-let fetchTokens = async (address) => {
-  var data = [];
-
-  var options = {
-    address: address,
-    cursor: '',
-    // limit: 100,
-    chain: 'eth'
-  };
-  var result = await Moralis.Web3API.token.getNFTOwners(options);
-  data = data.concat(result.result);
-  totaltokens += result.total;
-  var ttt = result.total;
-  var progress = result.result.length;
-  bar1.start(ttt, progress);
-  while (result.next && result.cursor) {
-    result = await Moralis.Web3API.token.getNFTOwners({ ...options, cursor: result.cursor });
-    data = data.concat(result.result);
-    progress += result.result.length;
-    bar1.update(progress);
-  }
-  bar1.stop();
-  data.map(async (item, key) => {
-    var rarity_score = 1;
-    var traitsCount = await Traits.find({
-      address: item.token_address
-    }).countDocuments();
-    // Calculate rarity score, rarity rank for each token
-    if (item.metadata && traitsCount) {
-      var metadata = JSON.parse(item.metadata);
-      var attributes = metadata.attributes;
-      if (attributes) {
-        await attributes.reduce(async (accum, attr) => {
-          // don't progress further until the last iteration has finished:
-          await accum;
-          var type = attr.trait_type;
-          var value = attr.value;
-          //find trait record
-          var record = await Traits.findOne({
-            address: item.token_address,
-            type: type,
-            value: value?.toString().toLowerCase()
-          });
-          //calculate score
-          var trait_rarity_socre = record ? record.rarity : 0.001;
-          rarity_score *= trait_rarity_socre;
-          return 1;
-        }, Promise.resolve(''));
-      }
-    }
-    // save db
-    await Tokens.create({
-      token_address: item.token_address,
-      name: item.name,
-      symbol: item.symbol,
-      token_id: item.token_id,
-      owner: item.owner_of,
-      token_uri: item.token_uri,
-      metadata: item.metadata,
-      contract_type: item.contract_type,
-      synced_at: item.synced_at,
-      rarity_score: rarity_score,
-      isSync: false
-    });
-  });
-  //give rarity rank
-  var records = await Tokens.find({ token_address: address, isSync: false }).sort({
-    rarity_score: 1
-  });
-  records.map(async (record, key) => {
-    if (record.rarity_score != 1)
-      await Tokens.findOneAndUpdate({ _id: record._id }, { rarity_rank: key + 1 });
-  });
-  console.log(address, data.length, 'tokens fetched among ', ttt);
-};
-
 exports.getTrendingCollections = async (req, res) => {
   try {
     var timeframe = req.body.timeframe ? req.body.timeframe : 1;
-    let item = JSON.parse(JSON.stringify(await TrendingCollections.find({ timeframe: timeframe })));
+    let item = JSON.parse(
+      JSON.stringify(await TrendingCollections.find({ timeframe: timeframe, isSync: true }))
+    );
     return res.json({
       data: item
     });
@@ -285,10 +335,10 @@ exports.getTrendingCollections = async (req, res) => {
   }
 };
 
-exports.getTrades = async (req, res) => {
+exports.getTraits = async (req, res) => {
   try {
     var address = req.body.address;
-    let item = JSON.parse(JSON.stringify(await TradeTransactions.find({ address: address })));
+    let item = JSON.parse(JSON.stringify(await Traits.find({ address: address, isSync: true })));
     return res.json({
       data: item
     });
@@ -303,7 +353,22 @@ exports.getTokens = async (req, res) => {
   try {
     var address = req.body.address;
     let item = JSON.parse(
-      JSON.stringify(await Tokens.find({ token_address: address }).sort({ token_id: 1 }))
+      JSON.stringify(
+        await Tokens.find(
+          { token_address: address, isSync: true },
+          {
+            _id: 0,
+            contract_type: 0,
+            isSync: 0,
+            rarity_score: 0,
+            symbol: 0,
+            token_address: 0,
+            token_uri: 0
+          }
+        ).sort({
+          token_id: 1
+        })
+      )
     );
     return res.json({
       data: item
@@ -315,10 +380,10 @@ exports.getTokens = async (req, res) => {
   }
 };
 
-exports.getTraits = async (req, res) => {
+exports.getTrades = async (req, res) => {
   try {
     var address = req.body.address;
-    let item = JSON.parse(JSON.stringify(await Traits.find({ address: address })));
+    let item = JSON.parse(JSON.stringify(await Trades.find({ address: address, isSync: true })));
     return res.json({
       data: item
     });
@@ -456,13 +521,23 @@ exports.searchContracts = async (req, res) => {
   }
 };
 
-(async () => {
-  // await cronFetchTrendings();
-
-  setInterval(async () => {
-    await cronFetchTrendings();
-  }, 60 * 60 * 1000);
-})();
+// (async () => {
+//   const provider = new ethers.providers.JsonRpcProvider(
+//     'https://red-old-frog.quiknode.pro/2458f7b70db61a6db94d20c9a898cbeb4714f408/'
+//   );
+//   provider.connection.headers = { 'x-qn-api-version': 1 };
+//   var starttime = new Date();
+//   for (var i = 0; i < 100; i++) {
+//     var heads = await provider.send('qn_fetchNFTsByCollection', {
+//       collection: '0x0ee80069c9b4993882fe0b3fc256260eff385982',
+//       omitFields: ['collectionName', 'provenance'],
+//       page: i + 1,
+//       perPage: 100
+//     });
+//     console.log(heads.pageNumber);
+//   }
+//   console.log('quicknode', starttime, new Date());
+// })();
 
 let fetchOrderTransactionsfromICY = async (address, gteTime) => {
   const query = gql`
