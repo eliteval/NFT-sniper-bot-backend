@@ -84,6 +84,7 @@ let cronFetchTrendings = async () => {
 };
 
 let fetchTrendingCollections = async (timeframe) => {
+  console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
   const query = gql`
     query TrendingCollections($first: Int, $gtTime: Date) {
       contracts(orderBy: SALES, orderDirection: DESC, first: $first) {
@@ -112,7 +113,6 @@ let fetchTrendingCollections = async (timeframe) => {
     first: top_collections_num, //max 50
     gtTime: new Date(new Date().getTime() - timeframe * 60 * 60 * 1000)
   };
-  console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
 
   var results = await graphQLClient.request(query, variables);
   results = results.contracts.edges;
@@ -155,7 +155,7 @@ let fetchTrendingCollections = async (timeframe) => {
 
 let fetchTraits = async (address, slug) => {
   if (!slug) return;
-
+  console.log(`${slug}, start fetch traits`);
   var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
   var traits = result.data.collection.traits;
 
@@ -169,7 +169,7 @@ let fetchTraits = async (address, slug) => {
     }
     for (const value in typearr) {
       var amount = typearr[value];
-      var rarity = amount / totalamount;
+      var rarity = totalamount == 0 ? 1 : amount / totalamount;
       await Traits.create({
         address,
         type,
@@ -212,14 +212,12 @@ let fetchTokens = async (address) => {
     bar1.update(progress); //progress bar
   }
   bar1.stop(); //progress bar
-  console.log('test 1', data.length, new Date());
 
   // Calculate rarity score, rarity rank for each token
   var traitsCount = await Traits.find({
     address: address,
     isLoading: true
   }).countDocuments();
-  console.log(traitsCount, ' traits');
 
   await data.reduce(async (accum, item) => {
     await accum;
@@ -232,7 +230,7 @@ let fetchTokens = async (address) => {
       var metadata = JSON.parse(item.metadata);
       name = metadata.name;
       image = metadata.image;
-      image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      if (image) image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
       attributes = metadata.attributes;
       if (attributes) {
         await attributes.reduce(async (accum, attr) => {
@@ -273,8 +271,6 @@ let fetchTokens = async (address) => {
     return 1;
   }, Promise.resolve(''));
 
-  console.log('test 2', new Date());
-
   //give rarity rank
   var records = await Tokens.find({
     token_address: address,
@@ -309,6 +305,7 @@ let fetchTrades = async (address) => {
   var result = await Moralis.Web3API.token.getNFTTrades(options);
   data = data.concat(result.result);
   totaltrades += result.total;
+  console.log(result.total);
   var ttt = result.total;
   while (result.next) {
     result = await Moralis.Web3API.token.getNFTTrades({
@@ -394,6 +391,12 @@ exports.getTokens = async (req, res) => {
     if (filter.rank.max) rarity_rank_query.$lte = filter.rank.max;
     if (filter.rank.min || filter.rank.max) findquery.rarity_rank = rarity_rank_query;
 
+    //rarity_rank query
+    var token_id_query = {};
+    if (filter.token_id.min) token_id_query.$gte = filter.token_id.min;
+    if (filter.token_id.max) token_id_query.$lte = filter.token_id.max;
+    if (filter.token_id.min || filter.token_id.max) findquery.token_id = token_id_query;
+
     // console.log(findquery);
 
     //find
@@ -437,23 +440,59 @@ exports.getTrades = async (req, res) => {
 exports.getHolders = async (req, res) => {
   try {
     var address = req.body.address;
-    let item = JSON.parse(
+    let holdersdata = JSON.parse(
       JSON.stringify(
         await Tokens.aggregate([
-          { $match: { isSync: true } },
+          { $match: { token_address: address, isSync: true } },
           { $group: { _id: '$owner', count: { $sum: 1 } } }
         ]).sort({
           count: -1
         })
       )
     );
+    let top_holdersdata = JSON.parse(
+      JSON.stringify(
+        await Tokens.aggregate([
+          { $match: { token_address: address, isSync: true } },
+          { $group: { _id: '$owner', count: { $sum: 1 } } }
+        ])
+          .sort({
+            count: -1
+          })
+          .limit(100)
+      )
+    );
     var tokens_count = await Tokens.find({
       token_address: address,
       isSync: true
     }).countDocuments();
+    var holders = holdersdata.length;
+    var avg_owned = holdersdata.length == 0 ? 1 : tokens_count / holdersdata.length;
+    var unique_percent = (holdersdata.length / tokens_count) * 100;
+    var holders1 = 0,
+      holders2_5 = 0,
+      holders6_20 = 0,
+      holders21_50 = 0,
+      holders51 = 0;
+    holdersdata.map((item) => {
+      if (item.count == 1) holders1++;
+      if (item.count >= 2 && item.count <= 5) holders2_5++;
+      if (item.count >= 6 && item.count <= 20) holders6_20++;
+      if (item.count >= 21 && item.count <= 50) holders21_50++;
+      if (item.count >= 51) holders51++;
+    });
+
     return res.json({
-      data: item,
-      tokens_count: tokens_count
+      data: top_holdersdata,
+      tokens_count: tokens_count,
+      holders: holders,
+      avg_owned: avg_owned,
+      unique_percent: unique_percent,
+      holders1: holders1,
+      holders2_5: holders2_5,
+      holders6_20: holders6_20,
+      holders21_50: holders21_50,
+      holders51: holders51
     });
   } catch (err) {
     console.log(err.message);
