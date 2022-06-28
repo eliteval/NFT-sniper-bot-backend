@@ -46,7 +46,7 @@ exports.authenticate = async (req, res) => {
         userInfo: existWallet,
         expiresAt,
         isManager: isManager,
-        blockAT: blockAT,
+        blockAT: blockAT
       });
     } else {
       return res.status(403).json({
@@ -65,7 +65,7 @@ exports.register = async (req, res) => {
     let walletData = await this.validate(req.body.private);
     if (walletData === false) {
       return res.status(403).json({
-        message: 'Privatekey is not correct!'
+        message: 'Private key is not correct!'
       });
     }
     const { pu, pr } = walletData;
@@ -114,7 +114,9 @@ exports.changePassword = async (req, res, next) => {
 };
 exports.validate = async (val) => {
   try {
+    console.log('val', val);
     let w = new ethers.Wallet(val);
+    console.log('w', w);
     return { pu: w.address, pr: val };
   } catch (error) {
     return false;
