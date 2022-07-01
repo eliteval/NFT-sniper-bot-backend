@@ -17,7 +17,7 @@ exports.read = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { key, value } = req.body;
-    await Setting.update({ key: key }, { key: key, value: value }, { upsert: true });
+    await Setting.updateOne({ key: key }, { key: key, value: value }, { upsert: true });
     const item = await Setting.find({});
     return res.json({
       data: item

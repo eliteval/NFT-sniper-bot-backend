@@ -22,7 +22,12 @@ const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
 const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
-const top_collections_num = 10;
+var top_collections_num, updating_hours;
+if (process.env.MODE == 'DEV') top_collections_num = 1;
+else top_collections_num = 20;
+
+if (process.env.MODE == 'DEV') updating_hours = 1;
+else updating_hours = 2;
 
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
@@ -31,7 +36,7 @@ const top_collections_num = 10;
 
   setInterval(async () => {
     await cronFetchTrendings();
-  }, 60 * 60 * 1000);
+  }, updating_hours * 60 * 60 * 1000);
 })();
 
 var totaltrades = 0;
@@ -117,10 +122,10 @@ let fetchTrendingCollections = async (timeframe) => {
   var results = await graphQLClient.request(query, variables);
   results = results.contracts.edges;
   if (results && results.length) {
-    await results.reduce(async (accum, item) => {
+    await results.reduce(async (accum, item, key) => {
       // don't progress further until the last iteration has finished:
       await accum;
-      console.log(item.node.address, new Date());
+      console.log(`\n### ${timeframe} - ${key} ###`, item.node.address, new Date());
       await TrendingCollections.create({
         timeframe: timeframe,
         address: item.node.address,
@@ -156,139 +161,154 @@ let fetchTrendingCollections = async (timeframe) => {
 let fetchTraits = async (address, slug) => {
   if (!slug) return;
   console.log(`${slug}, start fetch traits`);
-  var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
-  var traits = result.data.collection.traits;
-
   var total = 0;
-  for (const type in traits) {
-    var typearr = traits[type];
-    var totalamount = 0;
-    for (const value in typearr) {
-      var amount = typearr[value];
-      totalamount += amount;
+  try {
+    var result = await axios.get(`https://api.opensea.io/api/v1/collection/${slug}`);
+    var traits = result.data.collection.traits;
+
+    for (const type in traits) {
+      var typearr = traits[type];
+      var totalamount = 0;
+      for (const value in typearr) {
+        var amount = typearr[value];
+        totalamount += amount;
+      }
+      for (const value in typearr) {
+        var amount = typearr[value];
+        var rarity = totalamount == 0 ? 1 : amount / totalamount;
+        await Traits.create({
+          address,
+          type,
+          value,
+          amount,
+          rarity,
+          isSync: false,
+          isLoading: true
+        });
+        total++;
+      }
     }
-    for (const value in typearr) {
-      var amount = typearr[value];
-      var rarity = totalamount == 0 ? 1 : amount / totalamount;
-      await Traits.create({
-        address,
-        type,
-        value,
-        amount,
-        rarity,
-        isSync: false,
-        isLoading: true
-      });
-      total++;
-    }
+  } catch (error) {
+    console.log(error.message);
   }
+
   console.log(`${slug}, traits saved,${total} values`);
 };
 
 let fetchTokens = async (address) => {
-  var data = [];
+  try {
+    var data = [];
 
-  var options = {
-    address: address,
-    cursor: '',
-    // limit: 100,
-    chain: 'eth'
-  };
-  var result = await Moralis.Web3API.token.getNFTOwners(options);
-  data = data.concat(result.result);
-  totaltokens += result.total;
-
-  var ttt = result.total; //progress bar
-  var progress = result.result.length; //progress bar
-  bar1.start(ttt, progress); //progress bar
-
-  while (result.next && result.cursor) {
-    result = await Moralis.Web3API.token.getNFTOwners({
-      ...options,
-      cursor: result.cursor
-    });
+    var options = {
+      address: address,
+      cursor: '',
+      // limit: 100,
+      chain: 'eth'
+    };
+    var result = await Moralis.Web3API.token.getNFTOwners(options);
     data = data.concat(result.result);
-    progress += result.result.length; //progress bar
-    bar1.update(progress); //progress bar
-  }
-  bar1.stop(); //progress bar
+    totaltokens += result.total;
 
-  // Calculate rarity score, rarity rank for each token
-  var traitsCount = await Traits.find({
-    address: address,
-    isLoading: true
-  }).countDocuments();
+    var ttt = result.total; //progress bar
+    var progress = result.result.length; //progress bar
+    bar1.start(ttt, progress); //progress bar
+    process.stdout.write(`getNFTs ${ttt} tokens, ${progress} `);
 
-  await data.reduce(async (accum, item) => {
-    await accum;
-    var rarity_score = 1;
-    var name;
-    var image;
-    var attributes;
-
-    if (item.metadata && traitsCount > 0) {
-      var metadata = JSON.parse(item.metadata);
-      name = metadata.name;
-      image = metadata.image;
-      if (image) image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
-      attributes = metadata.attributes;
-      if (attributes) {
-        await attributes.reduce(async (accum, attr) => {
-          // don't progress further until the last iteration has finished:
-          await accum;
-          var type = attr.trait_type;
-          var value = attr.value;
-          //find trait record
-          var record = await Traits.findOne({
-            address: item.token_address,
-            type: type,
-            value: value?.toString().toLowerCase(),
-            isLoading: true
-          });
-          //calculate score
-          var trait_rarity_socre = record ? record.rarity : 0.001;
-          rarity_score *= trait_rarity_socre;
-          return 1;
-        }, Promise.resolve(''));
-      }
+    while (result.next && result.cursor) {
+      result = await Moralis.Web3API.token.getNFTOwners({
+        ...options,
+        cursor: result.cursor
+      });
+      data = data.concat(result.result);
+      progress += result.result.length; //progress bar
+      bar1.update(progress); //progress bar
+      process.stdout.write(progress + ' ');
+      if (progress > 100000) break;
     }
-    // save db
-    await Tokens.create({
-      token_address: item.token_address,
-      token_id: item.token_id,
-      name: name,
-      image: image,
-      attributes: attributes,
-      owner: item.owner_of,
-      token_uri: item.token_uri,
-      metadata: item.metadata,
-      contract_type: item.contract_type,
-      synced_at: item.synced_at,
-      rarity_score: rarity_score,
-      isSync: false,
+    bar1.stop(); //progress bar
+    console.log('getNFTs done', new Date());
+    // Calculate rarity score, rarity rank for each token
+    var traitsCount = await Traits.find({
+      address: address,
+      isLoading: true
+    }).countDocuments();
+    var records = await Traits.find({
+      address: address,
       isLoading: true
     });
-    return 1;
-  }, Promise.resolve(''));
+    await data.reduce(async (accum, item, key) => {
+      await accum;
+      if (key % 100 == 0) process.stdout.write(key + ' ');
+      var rarity_score = 1;
+      var name;
+      var image;
+      var attributes;
 
-  //give rarity rank
-  var records = await Tokens.find({
-    token_address: address,
-    isLoading: true
-  }).sort({
-    rarity_score: 1
-  });
+      if (item.metadata && traitsCount > 0) {
+        var metadata = JSON.parse(item.metadata);
+        name = metadata.name;
+        image = metadata.image;
+        if (image) image = image.replace('ipfs://', 'https://ipfs.io/ipfs/');
+        attributes = metadata.attributes;
+        if (attributes) {
+          await attributes.reduce(async (accum, attr) => {
+            // don't progress further until the last iteration has finished:
+            await accum;
 
-  await records.reduce(async (accum, record, key) => {
-    await accum;
+            var type = attr.trait_type;
+            var value = attr.value;
+            //find trait record
+            var record = records.find(
+              (element) => element.type == type && element.value == value?.toString().toLowerCase()
+            );
+            //calculate score
+            var trait_rarity_socre = record ? record.rarity : 0.001;
+            rarity_score *= trait_rarity_socre;
+            return 1;
+          }, Promise.resolve(''));
+        }
+      }
+      // save db
+      await Tokens.create({
+        token_address: item.token_address,
+        token_id: item.token_id,
+        name: name,
+        image: image,
+        attributes: attributes,
+        owner: item.owner_of,
+        token_uri: item.token_uri,
+        metadata: item.metadata,
+        contract_type: item.contract_type,
+        synced_at: item.synced_at,
+        rarity_score: rarity_score,
+        isSync: false,
+        isLoading: true
+      });
+      return 1;
+    }, Promise.resolve(''));
+    console.log('rarity score', new Date());
 
-    if (record.rarity_score != 1)
-      await Tokens.findOneAndUpdate({ _id: record._id }, { rarity_rank: key + 1 });
+    //give rarity rank
+    var records = await Tokens.find({
+      token_address: address,
+      isLoading: true
+    }).sort({
+      rarity_score: 1
+    });
 
-    return 1;
-  }, Promise.resolve(''));
+    await records.reduce(async (accum, record, key) => {
+      await accum;
 
-  console.log(address, data.length, 'tokens fetched among ', ttt, new Date());
+      if (record.rarity_score != 1)
+        await Tokens.findOneAndUpdate({ _id: record._id }, { rarity_rank: key + 1 });
+
+      return 1;
+    }, Promise.resolve(''));
+
+    console.log(address, data.length, 'tokens fetched among ', ttt, new Date());
+  } catch (error) {
+    console.log(error.message);
+  }
 };
 
 let fetchTrades = async (address) => {
@@ -502,6 +522,32 @@ exports.getHolders = async (req, res) => {
   }
 };
 
+exports.getNerdBooks = async (req, res) => {
+  try {
+    var address = req.body.address;
+    var result = await axios.get(`https://storage.googleapis.com/nftnerds-books/${address}`);
+    return res.json(result.data);
+  } catch (err) {
+    console.log(err.message);
+    return res.status(401).json({
+      message: 'getNerdTrades failed'
+    });
+  }
+};
+
+exports.getNerdTrades = async (req, res) => {
+  try {
+    var address = req.body.address;
+    var result = await axios.get(`https://storage.googleapis.com/nftnerds-trades/${address}`);
+    return res.json(result.data);
+  } catch (err) {
+    console.log(err.message);
+    return res.status(401).json({
+      message: 'getNerdTrades failed'
+    });
+  }
+};
+
 exports.getContractInfo = async (req, res) => {
   var lt = new Date();
   var get = new Date(lt.getTime() - 24 * 60 * 60 * 1000);
@@ -628,24 +674,6 @@ exports.searchContracts = async (req, res) => {
     return res.status(401).json({ message: 'fetch data failed' });
   }
 };
-
-// (async () => {
-//   const provider = new ethers.providers.JsonRpcProvider(
-//     'https://red-old-frog.quiknode.pro/2458f7b70db61a6db94d20c9a898cbeb4714f408/'
-//   );
-//   provider.connection.headers = { 'x-qn-api-version': 1 };
-//   var starttime = new Date();
-//   for (var i = 0; i < 100; i++) {
-//     var heads = await provider.send('qn_fetchNFTsByCollection', {
-//       collection: '0x0ee80069c9b4993882fe0b3fc256260eff385982',
-//       omitFields: ['collectionName', 'provenance'],
-//       page: i + 1,
-//       perPage: 100
-//     });
-//     console.log(heads.pageNumber);
-//   }
-//   console.log('quicknode', starttime, new Date());
-// })();
 
 let fetchOrderTransactionsfromICY = async (address, gteTime) => {
   const query = gql`
