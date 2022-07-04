@@ -23,11 +23,11 @@ const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
 var top_collections_num, updating_hours;
-if (process.env.MODE == 'DEV') top_collections_num = 1;
-else top_collections_num = 20;
+if (process.env.MODE == 'DEV') top_collections_num = 1; //Number of collections
+else top_collections_num = 100;
 
-if (process.env.MODE == 'DEV') updating_hours = 1;
-else updating_hours = 2;
+if (process.env.MODE == 'DEV') updating_hours = 1;  // Updating Duration (hours)
+else updating_hours = 10;
 
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
