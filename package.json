@@ -1,7 +1,7 @@
 {
-  "name": "roulette-api",
-  "version": "1.0.0",
-  "description": "Roulette GCU Backend",
+  "name": "nft-sniper",
+  "version": "1.2.0",
+  "description": "NFT analysis tool and sniper tool",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

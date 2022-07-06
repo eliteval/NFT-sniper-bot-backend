@@ -1,7 +1,9 @@
 const TrendingCollections = require('../models/icy_trending_collections');
+const TopCollections = require('../models/icy_top100_collections');
 const Trades = require('../models/icy_trades');
 const Tokens = require('../models/icy_tokens');
 const Traits = require('../models/icy_traits');
+
 const axios = require('axios');
 const ethers = require('ethers');
 
@@ -32,9 +34,14 @@ else updating_hours = 8;
 
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
+  //top 100
+  await cronFetchTop100();
+  setInterval(async () => {
+    await cronFetchTop100();
+  }, 6 * 60 * 60 * 1000);
 
+  //trending collections
   await cronFetchTrendings();
-
   setInterval(async () => {
     await cronFetchTrendings();
   }, updating_hours * 60 * 60 * 1000);
@@ -45,7 +52,7 @@ var totaltokens = 0;
 
 let cronFetchTrendings = async () => {
   var starttime = new Date();
-  console.log('DB updating Analysis', starttime);
+  console.log('Trending Collections Updating', starttime);
   totaltrades = 0;
   totaltokens = 0;
 
@@ -54,10 +61,10 @@ let cronFetchTrendings = async () => {
   await Tokens.updateMany({}, { isLoading: false }, { upsert: true });
   await Trades.updateMany({}, { isLoading: false }, { upsert: true });
 
-  await fetchTrendingCollections(1);
-  await fetchTrendingCollections(4);
-  await fetchTrendingCollections(1 * 24);
-  await fetchTrendingCollections(7 * 24);
+  await _fetchTrendingCollections(1);
+  await _fetchTrendingCollections(4);
+  await _fetchTrendingCollections(1 * 24);
+  await _fetchTrendingCollections(7 * 24);
 
   await TrendingCollections.deleteMany({ isLoading: false });
   await TrendingCollections.updateMany(
@@ -86,10 +93,10 @@ let cronFetchTrendings = async () => {
 
   console.log('total trades: ', totaltrades);
   console.log('total tokens: ', totaltokens);
-  console.log('DB updated Analysis', starttime, new Date());
+  console.log('Trending Collections Updated', starttime, new Date());
 };
 
-let fetchTrendingCollections = async (timeframe) => {
+let _fetchTrendingCollections = async (timeframe) => {
   console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
   const query = gql`
     query TrendingCollections($first: Int, $gtTime: Date, $after: String) {
@@ -125,13 +132,13 @@ let fetchTrendingCollections = async (timeframe) => {
   };
 
   var results = await graphQLClient.request(query, variables);
-  var endCurosr = results.contracts.pageInfo.endCurosr;
+  var endCursor = results.contracts.pageInfo.endCursor;
   results = results.contracts.edges;
 
   if (top_collections_num > 50) {
     var temp = await graphQLClient.request(query, {
       ...variables,
-      after: endCurosr
+      after: endCursor
     });
     results = results.concat(temp.contracts.edges);
   }
@@ -162,9 +169,9 @@ let fetchTrendingCollections = async (timeframe) => {
         isLoading: true
       }).countDocuments();
       if (count == 1) {
-        await fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
-        await fetchTokens(item.node.address);
-        await fetchTrades(item.node.address);
+        await _fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
+        await _fetchTokens(item.node.address);
+        await _fetchTrades(item.node.address);
       }
       return 1;
     }, Promise.resolve(''));
@@ -173,7 +180,7 @@ let fetchTrendingCollections = async (timeframe) => {
   }
 };
 
-let fetchTraits = async (address, slug) => {
+let _fetchTraits = async (address, slug) => {
   if (!slug) return;
   console.log(`${slug}, start fetch traits`);
   var total = 0;
@@ -210,7 +217,7 @@ let fetchTraits = async (address, slug) => {
   console.log(`${slug}, traits saved,${total} values`);
 };
 
-let fetchTokens = async (address) => {
+let _fetchTokens = async (address) => {
   try {
     var data = [];
 
@@ -326,7 +333,7 @@ let fetchTokens = async (address) => {
   }
 };
 
-let fetchTrades = async (address) => {
+let _fetchTrades = async (address) => {
   var data = [];
 
   var options = {
@@ -364,6 +371,19 @@ let fetchTrades = async (address) => {
     });
   });
   console.log(address, data.length, 'trades fetched among ', ttt);
+};
+
+let cronFetchTop100 = async () => {
+  try {
+    var result = await axios.get(`https://api.cryptoslam.io/v1/collections/top-100?timeRange=all`);
+    await TopCollections.deleteMany({});
+    result.data.map(async (item) => {
+      await TopCollections.create(item);
+    });
+    console.log('Top Collections Updated', new Date());
+  } catch (err) {
+    console.log(err.message);
+  }
 };
 
 exports.getTrendingCollections = async (req, res) => {
@@ -563,6 +583,20 @@ exports.getNerdTrades = async (req, res) => {
   }
 };
 
+exports.getTop100Collections = async (req, res) => {
+  try {
+    var records = await TopCollections.find({}).sort({ rank: 1 });
+    return res.json({
+      data: records
+    });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(401).json({
+      message: 'getTop100Collections failed'
+    });
+  }
+};
+
 exports.getContractInfo = async (req, res) => {
   var lt = new Date();
   var get = new Date(lt.getTime() - 24 * 60 * 60 * 1000);
@@ -690,7 +724,7 @@ exports.searchContracts = async (req, res) => {
   }
 };
 
-let fetchOrderTransactionsfromICY = async (address, gteTime) => {
+let zfetchOrderTransactionsfromICY = async (address, gteTime) => {
   const query = gql`
     query CollectionStats($address: String!, $after: String, $gteTime: Date!) {
       contract(address: $address) {
@@ -754,7 +788,7 @@ let fetchOrderTransactionsfromICY = async (address, gteTime) => {
   }
 };
 
-let fetchTokensfromICY = async (address) => {
+let zfetchTokensfromICY = async (address) => {
   const query = gql`
     query($address: String!, $after: String) {
       contract(address: $address) {

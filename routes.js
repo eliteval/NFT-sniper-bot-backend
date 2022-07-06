@@ -75,6 +75,7 @@ router.post('/setting/update', [requireAdmin], settingController.update);
 router.post('/setting/delete', [requireAdmin], settingController.delete);
 //icy
 router.post('/icy/getTrendingCollections', [requireAuth, requireNFT], icyController.getTrendingCollections);
+router.post('/icy/getTop100Collections', [requireAuth, requireNFT], icyController.getTop100Collections);
 router.post('/icy/getContractInfo', [requireAuth, requireNFT], icyController.getContractInfo);
 router.post('/icy/searchContracts', [requireAuth, requireNFT], icyController.searchContracts);
 router.post('/icy/getTrades', [requireAuth, requireNFT], icyController.getTrades);
