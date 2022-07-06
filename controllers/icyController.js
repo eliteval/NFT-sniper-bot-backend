@@ -22,12 +22,13 @@ const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
 const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
 const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
 
+//Number of collections, Updating Duration (hours)
 var top_collections_num, updating_hours;
-if (process.env.MODE == 'DEV') top_collections_num = 1; //Number of collections
+if (process.env.MODE == 'DEV') top_collections_num = 1;
 else top_collections_num = 100;
 
-if (process.env.MODE == 'DEV') updating_hours = 1;  // Updating Duration (hours)
-else updating_hours = 10;
+if (process.env.MODE == 'DEV') updating_hours = 1;
+else updating_hours = 8;
 
 (async () => {
   await Moralis.start({ serverUrl, appId, moralisSecret });
@@ -91,8 +92,11 @@ let cronFetchTrendings = async () => {
 let fetchTrendingCollections = async (timeframe) => {
   console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
   const query = gql`
-    query TrendingCollections($first: Int, $gtTime: Date) {
-      contracts(orderBy: SALES, orderDirection: DESC, first: $first) {
+    query TrendingCollections($first: Int, $gtTime: Date, $after: String) {
+      contracts(orderBy: SALES, orderDirection: DESC, first: $first, after: $after) {
+        pageInfo {
+          endCursor
+        }
         edges {
           node {
             address
@@ -115,17 +119,28 @@ let fetchTrendingCollections = async (timeframe) => {
     }
   `;
   const variables = {
+    after: '',
     first: top_collections_num, //max 50
     gtTime: new Date(new Date().getTime() - timeframe * 60 * 60 * 1000)
   };
 
   var results = await graphQLClient.request(query, variables);
+  var endCurosr = results.contracts.pageInfo.endCurosr;
   results = results.contracts.edges;
+
+  if (top_collections_num > 50) {
+    var temp = await graphQLClient.request(query, {
+      ...variables,
+      after: endCurosr
+    });
+    results = results.concat(temp.contracts.edges);
+  }
+
   if (results && results.length) {
     await results.reduce(async (accum, item, key) => {
       // don't progress further until the last iteration has finished:
       await accum;
-      console.log(`\n### ${timeframe} - ${key} ###`, item.node.address, new Date());
+      console.log(`\n### ${timeframe} - ${key + 1} ###`, item.node.address, new Date());
       await TrendingCollections.create({
         timeframe: timeframe,
         address: item.node.address,
