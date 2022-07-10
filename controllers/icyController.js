@@ -5,8 +5,7 @@ const Tokens = require('../models/icy_tokens');
 const Traits = require('../models/icy_traits');
 
 const axios = require('axios');
-const ethers = require('ethers');
-
+const nodemailer = require('nodemailer');
 const cliProgress = require('cli-progress');
 const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 const { GraphQLClient, gql } = require('graphql-request');
@@ -38,7 +37,7 @@ else updating_hours = 8;
   await cronFetchTop100();
   setInterval(async () => {
     await cronFetchTop100();
-  }, 6 * 60 * 60 * 1000);
+  }, 12 * 60 * 60 * 1000);
 
   //trending collections
   await cronFetchTrendings();
@@ -169,9 +168,9 @@ let _fetchTrendingCollections = async (timeframe) => {
         isLoading: true
       }).countDocuments();
       if (count == 1) {
-        await _fetchTraits(item.node.address, item.node.unsafeOpenseaSlug);
-        await _fetchTokens(item.node.address);
-        await _fetchTrades(item.node.address);
+        await _fetchTraits(item.node.address, item.node.unsafeOpenseaSlug, 'trending');
+        await _fetchTokens(item.node.address, 'trending');
+        await _fetchTrades(item.node.address, 'trending');
       }
       return 1;
     }, Promise.resolve(''));
@@ -180,7 +179,7 @@ let _fetchTrendingCollections = async (timeframe) => {
   }
 };
 
-let _fetchTraits = async (address, slug) => {
+let _fetchTraits = async (address, slug, type = '') => {
   if (!slug) return;
   console.log(`${slug}, start fetch traits`);
   var total = 0;
@@ -205,7 +204,8 @@ let _fetchTraits = async (address, slug) => {
           amount,
           rarity,
           isSync: false,
-          isLoading: true
+          isLoading: true,
+          type: type
         });
         total++;
       }
@@ -217,7 +217,7 @@ let _fetchTraits = async (address, slug) => {
   console.log(`${slug}, traits saved,${total} values`);
 };
 
-let _fetchTokens = async (address) => {
+let _fetchTokens = async (address, type = '') => {
   try {
     var data = [];
 
@@ -231,23 +231,26 @@ let _fetchTokens = async (address) => {
     data = data.concat(result.result);
     totaltokens += result.total;
 
-    var ttt = result.total; //progress bar
-    var progress = result.result.length; //progress bar
-    bar1.start(ttt, progress); //progress bar
-    process.stdout.write(`getNFTs ${ttt} tokens, ${progress} `);
+    if (process.env.MODE != 'DEV') {
+      var ttt = result.total; //progress bar
+      var progress = result.result.length; //progress bar
+      bar1.start(ttt, progress); //progress bar
+      process.stdout.write(`getNFTs ${ttt} tokens, ${progress} `);
 
-    while (result.next && result.cursor) {
-      result = await Moralis.Web3API.token.getNFTOwners({
-        ...options,
-        cursor: result.cursor
-      });
-      data = data.concat(result.result);
-      progress += result.result.length; //progress bar
-      bar1.update(progress); //progress bar
-      process.stdout.write(progress + ' ');
-      if (progress > 100000) break;
+      while (result.next && result.cursor) {
+        result = await Moralis.Web3API.token.getNFTOwners({
+          ...options,
+          cursor: result.cursor
+        });
+        data = data.concat(result.result);
+        progress += result.result.length; //progress bar
+        bar1.update(progress); //progress bar
+        process.stdout.write(progress + ' ');
+        if (progress > 100000) break;
+      }
+      bar1.stop(); //progress bar
     }
-    bar1.stop(); //progress bar
+
     console.log('getNFTs done', new Date());
     // Calculate rarity score, rarity rank for each token
     var traitsCount = await Traits.find({
@@ -304,7 +307,8 @@ let _fetchTokens = async (address) => {
         synced_at: item.synced_at,
         rarity_score: rarity_score,
         isSync: false,
-        isLoading: true
+        isLoading: true,
+        type: type
       });
       return 1;
     }, Promise.resolve(''));
@@ -333,7 +337,7 @@ let _fetchTokens = async (address) => {
   }
 };
 
-let _fetchTrades = async (address) => {
+let _fetchTrades = async (address, type = '') => {
   var data = [];
 
   var options = {
@@ -367,23 +371,88 @@ let _fetchTrades = async (address) => {
       marketplace: item.marketplace_address,
       tradeAt: item.block_timestamp,
       isSync: false,
-      isLoading: true
+      isLoading: true,
+      type: type
     });
   });
   console.log(address, data.length, 'trades fetched among ', ttt);
 };
 
 let cronFetchTop100 = async () => {
-  try {
-    var result = await axios.get(`https://api.cryptoslam.io/v1/collections/top-100?timeRange=all`);
-    await TopCollections.deleteMany({});
-    result.data.map(async (item) => {
-      await TopCollections.create(item);
-    });
-    console.log('Top Collections Updated', new Date());
-  } catch (err) {
-    console.log(err.message);
-  }
+  let fetchTop100Collections = async (pagesize, pagenum) => {
+    try {
+      var data = JSON.stringify({
+        jsonrpc: '2.0',
+        id: 0,
+        method: 'nft_topCollections',
+        params: {
+          pageSize: pagesize, //max 50
+          pageIndex: pagenum
+        }
+      });
+
+      var config = {
+        method: 'post',
+        url: 'https://eth-mainnet.blockvision.org/v1/2BcPlg5x8U1rLy2SwYQRtvAi7GT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data: data
+      };
+      var response = await axios(config);
+      return response.data.result.data;
+    } catch (error) {
+      console.log(error.message);
+      return [];
+    }
+  };
+
+  let savedata = async () => {
+    var data = await fetchTop100Collections(50, 1);
+    var data1 = await fetchTop100Collections(50, 2);
+    data = data.concat(data1);
+
+    await data.reduce(async (accum, item, index) => {
+      await accum;
+      console.log('Top100 #', index, ' ', item.contractAddress);
+      await TopCollections.create({ ...item, rank: index, isSync: false, isLoading: true });
+      await _fetchTokens(item.contractAddress, 'top');
+      await _fetchTrades(item.contractAddress, 'top');
+      return 1;
+    }, Promise.resolve(''));
+  };
+
+  await TopCollections.updateMany({}, { isLoading: false }, { upsert: true });
+  await Traits.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
+  await Tokens.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
+  await Trades.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
+
+  await savedata();
+
+  await TrendingCollections.deleteMany({ type: 'top', isLoading: false });
+  await TrendingCollections.updateMany(
+    { type: 'top', isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
+  await Trades.deleteMany({ type: 'top', isLoading: false });
+  await Trades.updateMany(
+    { type: 'top', isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
+  await Tokens.deleteMany({ type: 'top', isLoading: false });
+  await Tokens.updateMany(
+    { type: 'top', isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
+  await Traits.deleteMany({ type: 'top', isLoading: false });
+  await Traits.updateMany(
+    { type: 'top', isLoading: true },
+    { isLoading: false, isSync: true },
+    { upsert: true }
+  );
 };
 
 exports.getTrendingCollections = async (req, res) => {
@@ -585,7 +654,7 @@ exports.getNerdTrades = async (req, res) => {
 
 exports.getTop100Collections = async (req, res) => {
   try {
-    var records = await TopCollections.find({}).sort({ rank: 1 });
+    var records = await TopCollections.find({ isSync: true }).sort({ rank: 1 });
     return res.json({
       data: records
     });
@@ -843,3 +912,33 @@ let zfetchTokensfromICY = async (address) => {
     });
   }
 };
+
+let sendemail = async () => {
+  var transporter = nodemailer.createTransport({
+    host: 'smtp.mailtrap.io',
+    port: 2525,
+    auth: {
+      user: 'ad8b7d70cf4f9a',
+      pass: '475818ccc356f2'
+    }
+  });
+  let mailOptions = {
+    from: '"Krunal Lathiya" <webdev181011@gmail.com>', // sender address
+    to: 'onecodestar@outlook.com', // list of receivers
+    subject: 'this is subject', // Subject line
+    text: 'plain text body', // plain text body
+    html: '<b>NodeJS Email Tutorial</b>' // html body
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      return console.log(error);
+    }
+    console.log('Message %s sent: %s', info.messageId, info.response);
+    res.render('index');
+  });
+};
+
+(async () => {
+  // await sendemail();
+})();

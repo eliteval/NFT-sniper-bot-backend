@@ -14,7 +14,8 @@ const icy_tokens = new Schema({
   rarity_score: { type: Number },
   rarity_rank: { type: Number },
   isSync: { type: Boolean },
-  isLoading: { type: Boolean }
+  isLoading: { type: Boolean },
+  type: { type: String }
 });
 
 icy_tokens.set('toJSON', { getters: true });

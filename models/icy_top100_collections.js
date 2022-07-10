@@ -3,22 +3,12 @@ const Schema = mongoose.Schema;
 
 const icy_top100_collections = new Schema({
   rank: { type: Number },
-  iconUrl: { type: String },
-  contractName: { type: String },
-  productPath: { type: String },
-  baseCurrency: { type: String },
-  isSalesOnly: { type: Boolean },
-  value: { type: Number },
-  valueUSD: { type: Number },
-  platform: { type: Number },
-  buyers: { type: Number },
-  sellers: { type: Number },
-  owners: { type: Number },
-  transactions: { type: Number },
-  changeInValueUSD: { type: Number },
-  previousValue: { type: Number },
-  previousValueUSD: { type: Number },
-  isSlamLandDisabled: { type: Boolean },
+  contractAddress: { type: String },
+  marketCap: { type: Number },
+  holders: { type: Number },
+  currency: { type: String },
+  isSync: { type: Boolean },
+  isLoading: { type: Boolean }
 });
 
 icy_top100_collections.set('toJSON', { getters: true });
