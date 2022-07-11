@@ -32,6 +32,7 @@ if (process.env.MODE == 'DEV') updating_hours = 1;
 else updating_hours = 8;
 
 (async () => {
+  if (process.env.MODE == 'DEV') return;
   await Moralis.start({ serverUrl, appId, moralisSecret });
   //top 100
   await cronFetchTop100();
@@ -56,9 +57,9 @@ let cronFetchTrendings = async () => {
   totaltokens = 0;
 
   await TrendingCollections.updateMany({}, { isLoading: false }, { upsert: true });
-  await Traits.updateMany({}, { isLoading: false }, { upsert: true });
-  await Tokens.updateMany({}, { isLoading: false }, { upsert: true });
-  await Trades.updateMany({}, { isLoading: false }, { upsert: true });
+  await Traits.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
+  await Tokens.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
+  await Trades.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
 
   await _fetchTrendingCollections(1);
   await _fetchTrendingCollections(4);
@@ -71,21 +72,21 @@ let cronFetchTrendings = async () => {
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Trades.deleteMany({ isLoading: false });
+  await Trades.deleteMany({ type: 'trending', isLoading: false });
   await Trades.updateMany(
-    { isLoading: true },
+    { type: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Tokens.deleteMany({ isLoading: false });
+  await Tokens.deleteMany({ type: 'trending', isLoading: false });
   await Tokens.updateMany(
-    { isLoading: true },
+    { type: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Traits.deleteMany({ isLoading: false });
+  await Traits.deleteMany({ type: 'trending', isLoading: false });
   await Traits.updateMany(
-    { isLoading: true },
+    { type: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
@@ -429,9 +430,9 @@ let cronFetchTop100 = async () => {
 
   await savedata();
 
-  await TrendingCollections.deleteMany({ type: 'top', isLoading: false });
-  await TrendingCollections.updateMany(
-    { type: 'top', isLoading: true },
+  await TopCollections.deleteMany({ isLoading: false });
+  await TopCollections.updateMany(
+    { isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
@@ -791,6 +792,11 @@ exports.searchContracts = async (req, res) => {
     console.log(error);
     return res.status(401).json({ message: 'fetch data failed' });
   }
+};
+
+exports.buyListedToken = async (req, res) => {
+  var contract_address = req.body.contract_address;
+  var token_id = req.body.token_id;
 };
 
 let zfetchOrderTransactionsfromICY = async (address, gteTime) => {
