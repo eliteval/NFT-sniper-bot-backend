@@ -32,7 +32,7 @@ if (process.env.MODE == 'DEV') updating_hours = 1;
 else updating_hours = 8;
 
 (async () => {
-  // if (process.env.MODE == 'DEV') return;
+  if (process.env.MODE == 'DEV') return;
   await Moralis.start({ serverUrl, appId, moralisSecret });
   //top 100
   await cronFetchTop100();
@@ -247,7 +247,7 @@ let _fetchTokens = async (address, type = '') => {
         progress += result.result.length; //progress bar
         bar1.update(progress); //progress bar
         process.stdout.write(progress + ' ');
-        if (progress > 100000) break;
+        if (progress > 10000) break;
       }
       bar1.stop(); //progress bar
     }
