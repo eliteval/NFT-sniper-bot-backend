@@ -416,12 +416,15 @@ let cronFetchTop100 = async () => {
     await data.reduce(async (accum, item, index) => {
       await accum;
       console.log('Top100 #', index, ' ', item.contractAddress);
-      await TopCollections.create({ ...item, rank: index, isSync: false, isLoading: true });
+      await TopCollections.create({ ...item, rank: index + 1, isSync: false, isLoading: true });
       await _fetchTokens(item.contractAddress, 'top');
       await _fetchTrades(item.contractAddress, 'top');
       return 1;
     }, Promise.resolve(''));
   };
+
+  var starttime = new Date();
+  console.log('Top Collections Updating', starttime);
 
   await TopCollections.updateMany({}, { isLoading: false }, { upsert: true });
   await Traits.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
@@ -429,7 +432,7 @@ let cronFetchTop100 = async () => {
   await Trades.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
 
   await savedata();
-
+  console.log('savedata done');
   await TopCollections.deleteMany({ isLoading: false });
   await TopCollections.updateMany(
     { isLoading: true },
@@ -454,6 +457,8 @@ let cronFetchTop100 = async () => {
     { isLoading: false, isSync: true },
     { upsert: true }
   );
+
+  console.log('Top Collections Updated', starttime, new Date());
 };
 
 exports.getTrendingCollections = async (req, res) => {

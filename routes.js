@@ -14,10 +14,10 @@ const {
   changePassword
 } = require('./controllers/restController');
 const nftSnipper = require('./controllers/nftSnipper');
-const pancakeSnipper = require('./controllers/pancakeSnipper');
-const uniswapSnipper = require('./controllers/uniswapSnipper');
-const presaleSnipper = require('./controllers/presaleSnipper');
-const swing = require('./controllers/swing');
+// const pancakeSnipper = require('./controllers/pancakeSnipper');
+// const uniswapSnipper = require('./controllers/uniswapSnipper');
+// const presaleSnipper = require('./controllers/presaleSnipper');
+// const swing = require('./controllers/swing');
 const walletController = require('./controllers/walletController');
 const authorizationController = require('./controllers/authorizationController');
 const icyController = require('./controllers/icyController');
@@ -39,28 +39,28 @@ router.post('/nft/readAllLogs', [requireAdmin], nftSnipper.readAllLogs);
 router.post('/nft/getContractInfo', [], nftSnipper.getContractInfo); 
 router.post('/nft/getbots', [], nftSnipper.getBots); //~~~~~~
 //pancake
-router.post('/pan/addBot', [requireAuth, requireSniper], pancakeSnipper.addBot);
-router.post('/pan/delBot', [requireAuth], pancakeSnipper.delBot);
-router.post('/pan/readPlan', [requireAuth], pancakeSnipper.readPlan);
-router.post('/pan/letSell', [requireAuth, requireSniper], pancakeSnipper.letSell);
-router.post('/pan/letApprove', [requireAuth, requireSniper], pancakeSnipper.letApprove);
-router.post('/pan/letDel', [requireAuth, requireSniper], pancakeSnipper.letDel);
-//uniswap
-router.post('/uni/addBot', [requireAuth, requireSniper], uniswapSnipper.addBot);
-router.post('/uni/delBot', [requireAuth], uniswapSnipper.delBot);
-router.post('/uni/readPlan', [requireAuth], uniswapSnipper.readPlan);
-router.post('/uni/letSell', [requireAuth], uniswapSnipper.letSell);
-router.post('/uni/letApprove', [requireAuth], uniswapSnipper.letApprove);
-router.post('/uni/letDel', [requireAuth], uniswapSnipper.letDel);
+// router.post('/pan/addBot', [requireAuth, requireSniper], pancakeSnipper.addBot);
+// router.post('/pan/delBot', [requireAuth], pancakeSnipper.delBot);
+// router.post('/pan/readPlan', [requireAuth], pancakeSnipper.readPlan);
+// router.post('/pan/letSell', [requireAuth, requireSniper], pancakeSnipper.letSell);
+// router.post('/pan/letApprove', [requireAuth, requireSniper], pancakeSnipper.letApprove);
+// router.post('/pan/letDel', [requireAuth, requireSniper], pancakeSnipper.letDel);
+// //uniswap
+// router.post('/uni/addBot', [requireAuth, requireSniper], uniswapSnipper.addBot);
+// router.post('/uni/delBot', [requireAuth], uniswapSnipper.delBot);
+// router.post('/uni/readPlan', [requireAuth], uniswapSnipper.readPlan);
+// router.post('/uni/letSell', [requireAuth], uniswapSnipper.letSell);
+// router.post('/uni/letApprove', [requireAuth], uniswapSnipper.letApprove);
+// router.post('/uni/letDel', [requireAuth], uniswapSnipper.letDel);
 
-//presale
-router.post('/pre/add', [requireAuth, requirePresale], presaleSnipper.add);
-router.post('/pre/read', [requireAuth], presaleSnipper.read);
-router.post('/pre/del', [requireAuth, requirePresale], presaleSnipper.del);
-//swing
-router.post('/swing/add', [requireAuth], swing.add);
-router.post('/swing/read', [requireAuth], swing.read);
-router.post('/swing/del', [requireAuth], swing.del);
+// //presale
+// router.post('/pre/add', [requireAuth, requirePresale], presaleSnipper.add);
+// router.post('/pre/read', [requireAuth], presaleSnipper.read);
+// router.post('/pre/del', [requireAuth, requirePresale], presaleSnipper.del);
+// //swing
+// router.post('/swing/add', [requireAuth], swing.add);
+// router.post('/swing/read', [requireAuth], swing.read);
+// router.post('/swing/del', [requireAuth], swing.del);
 //wallets
 router.post('/wallet/read', [requireAdmin], walletController.read);
 router.post('/wallet/lock', [requireAdmin], walletController.lock);
@@ -105,9 +105,9 @@ module.exports = (app, io) => {
   });
 
   const onConnection = (socket) => {
-    pancakeSnipper.setSocket(io, socket);
-    uniswapSnipper.setSocket(io, socket);
-    swing.setSocket(io, socket);
+    // pancakeSnipper.setSocket(io, socket);
+    // uniswapSnipper.setSocket(io, socket);
+    // swing.setSocket(io, socket);
   };
 
   //socket middleware
