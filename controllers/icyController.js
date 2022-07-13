@@ -416,7 +416,12 @@ let cronFetchTop100 = async () => {
     await data.reduce(async (accum, item, index) => {
       await accum;
       console.log('Top100 #', index, ' ', item.contractAddress);
-      await TopCollections.create({ ...item, rank: index + 1, isSync: false, isLoading: true });
+      await TopCollections.create({
+        ...item,
+        rank: index + 1,
+        isSync: false,
+        isLoading: true
+      });
       await _fetchTokens(item.contractAddress, 'top');
       await _fetchTrades(item.contractAddress, 'top');
       return 1;
@@ -493,7 +498,7 @@ exports.getTraits = async (req, res) => {
 
 exports.getTokens = async (req, res) => {
   try {
-    var address = req.body.address;
+    var address = req.body.address.toLowerCase();
     var pagination = req.body.pagination;
     var filter = req.body.filter;
     //declare findquery
@@ -556,7 +561,24 @@ exports.getTokens = async (req, res) => {
 exports.getTrades = async (req, res) => {
   try {
     var address = req.body.address;
-    let item = JSON.parse(JSON.stringify(await Trades.find({ address: address, isSync: true })));
+    let item = JSON.parse(
+      JSON.stringify(
+        await Trades.find(
+          { address: address, isSync: true },
+          {
+            _id: 0,
+            address: 0,
+            buyer: 0,
+            isLoading: 0,
+            isSync: 0,
+            marketplace: 0,
+            seller: 0,
+            transaction: 0,
+            type: 0
+          }
+        )
+      )
+    );
     return res.json({
       data: item
     });
@@ -569,7 +591,7 @@ exports.getTrades = async (req, res) => {
 
 exports.getHolders = async (req, res) => {
   try {
-    var address = req.body.address;
+    var address = req.body.address.toLowerCase();
     let holdersdata = JSON.parse(
       JSON.stringify(
         await Tokens.aggregate([
