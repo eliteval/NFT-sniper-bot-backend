@@ -246,7 +246,7 @@ let _fetchTokens = async (address, type = '') => {
         data = data.concat(result.result);
         progress += result.result.length; //progress bar
         bar1.update(progress); //progress bar
-        process.stdout.write(progress + ' ');
+        if (progress % 1000 == 0) process.stdout.write(progress + ' ');
         if (progress > 10000) break;
       }
       bar1.stop(); //progress bar
@@ -264,7 +264,7 @@ let _fetchTokens = async (address, type = '') => {
     });
     await data.reduce(async (accum, item, key) => {
       await accum;
-      if (key % 100 == 0) process.stdout.write(key + ' ');
+      if (key % 1000 == 0) process.stdout.write(key + ' ');
       var rarity_score = 1;
       var name;
       var image;
