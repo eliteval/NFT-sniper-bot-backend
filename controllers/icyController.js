@@ -32,7 +32,7 @@ if (process.env.MODE == 'DEV') updating_hours = 1;
 else updating_hours = 8;
 
 (async () => {
-  if (process.env.MODE == 'DEV') return;
+  // if (process.env.MODE == 'DEV') return;
   await Moralis.start({ serverUrl, appId, moralisSecret });
   //top 100
   await cronFetchTop100();
@@ -408,6 +408,33 @@ let cronFetchTop100 = async () => {
     }
   };
 
+  let icyContractInfo = async (address) => {
+    const query = gql`
+      query($address: String!) {
+        contract(address: $address) {
+          ... on ERC721Contract {
+            name
+            symbol
+            unsafeOpenseaImageUrl
+            unsafeOpenseaSlug
+            address
+          }
+        }
+      }
+    `;
+    const variables = {
+      address: address
+    };
+    try {
+      var results = await graphQLClient.request(query, variables);
+      var data = results.contract;
+      return data;
+    } catch (error) {
+      console.log(error.message);
+      return {};
+    }
+  };
+
   let savedata = async () => {
     var data = await fetchTop100Collections(50, 1);
     var data1 = await fetchTop100Collections(50, 2);
@@ -416,8 +443,16 @@ let cronFetchTop100 = async () => {
     await data.reduce(async (accum, item, index) => {
       await accum;
       console.log('Top100 #', index, ' ', item.contractAddress);
+      var { name, symbol, unsafeOpenseaImageUrl, unsafeOpenseaSlug } = await icyContractInfo(
+        item.contractAddress
+      );
+      console.log(unsafeOpenseaImageUrl);
       await TopCollections.create({
         ...item,
+        name,
+        symbol,
+        unsafeOpenseaImageUrl,
+        unsafeOpenseaSlug,
         rank: index + 1,
         isSync: false,
         isLoading: true

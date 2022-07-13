@@ -4,6 +4,10 @@ const Schema = mongoose.Schema;
 const icy_top100_collections = new Schema({
   rank: { type: Number },
   contractAddress: { type: String },
+  name: { type: String },
+  symbol: { type: String },
+  unsafeOpenseaImageUrl: { type: String },
+  unsafeOpenseaSlug: { type: String },
   marketCap: { type: Number },
   holders: { type: Number },
   currency: { type: String },
