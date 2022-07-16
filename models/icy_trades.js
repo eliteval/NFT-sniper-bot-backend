@@ -12,7 +12,7 @@ const icy_trades = new Schema({
   transaction: { type: String },
   isSync: { type: Boolean },
   isLoading: { type: Boolean },
-  type: { type: String }
+  kind: { type: String }
 });
 
 icy_trades.set('toJSON', { getters: true });

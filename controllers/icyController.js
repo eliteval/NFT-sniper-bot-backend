@@ -34,17 +34,18 @@ else updating_hours = 8;
 (async () => {
   if (process.env.MODE == 'DEV') return;
   await Moralis.start({ serverUrl, appId, moralisSecret });
-  //top 100
-  await cronFetchTop100();
-  setInterval(async () => {
-    await cronFetchTop100();
-  }, 12 * 60 * 60 * 1000);
-
   //trending collections
   await cronFetchTrendings();
   setInterval(async () => {
     await cronFetchTrendings();
   }, updating_hours * 60 * 60 * 1000);
+
+  return;
+  //top 100
+  await cronFetchTop100();
+  setInterval(async () => {
+    await cronFetchTop100();
+  }, 12 * 60 * 60 * 1000);
 })();
 
 var totaltrades = 0;
@@ -57,9 +58,9 @@ let cronFetchTrendings = async () => {
   totaltokens = 0;
 
   await TrendingCollections.updateMany({}, { isLoading: false }, { upsert: true });
-  await Traits.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
-  await Tokens.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
-  await Trades.updateMany({ type: 'trending' }, { isLoading: false }, { upsert: true });
+  await Traits.updateMany({ kind: 'trending' }, { isLoading: false }, { upsert: true });
+  await Tokens.updateMany({ kind: 'trending' }, { isLoading: false }, { upsert: true });
+  await Trades.updateMany({ kind: 'trending' }, { isLoading: false }, { upsert: true });
 
   await _fetchTrendingCollections(1);
   await _fetchTrendingCollections(4);
@@ -72,21 +73,21 @@ let cronFetchTrendings = async () => {
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Trades.deleteMany({ type: 'trending', isLoading: false });
+  await Trades.deleteMany({ kind: 'trending', isLoading: false });
   await Trades.updateMany(
-    { type: 'trending', isLoading: true },
+    { kind: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Tokens.deleteMany({ type: 'trending', isLoading: false });
+  await Tokens.deleteMany({ kind: 'trending', isLoading: false });
   await Tokens.updateMany(
-    { type: 'trending', isLoading: true },
+    { kind: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Traits.deleteMany({ type: 'trending', isLoading: false });
+  await Traits.deleteMany({ kind: 'trending', isLoading: false });
   await Traits.updateMany(
-    { type: 'trending', isLoading: true },
+    { kind: 'trending', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
@@ -94,10 +95,12 @@ let cronFetchTrendings = async () => {
   console.log('total trades: ', totaltrades);
   console.log('total tokens: ', totaltokens);
   console.log('Trending Collections Updated', starttime, new Date());
+
+  return;
 };
 
 let _fetchTrendingCollections = async (timeframe) => {
-  console.log(`fetching top #${top_collections_num} collections for timeframe `, timeframe);
+  console.log(`fetching trending #${top_collections_num} collections for timeframe `, timeframe);
   const query = gql`
     query TrendingCollections($first: Int, $gtTime: Date, $after: String) {
       contracts(orderBy: SALES, orderDirection: DESC, first: $first, after: $after) {
@@ -180,7 +183,7 @@ let _fetchTrendingCollections = async (timeframe) => {
   }
 };
 
-let _fetchTraits = async (address, slug, type = '') => {
+let _fetchTraits = async (address, slug, kind = '') => {
   if (!slug) return;
   console.log(`${slug}, start fetch traits`);
   var total = 0;
@@ -206,7 +209,7 @@ let _fetchTraits = async (address, slug, type = '') => {
           rarity,
           isSync: false,
           isLoading: true,
-          type: type
+          kind: kind
         });
         total++;
       }
@@ -218,7 +221,7 @@ let _fetchTraits = async (address, slug, type = '') => {
   console.log(`${slug}, traits saved,${total} values`);
 };
 
-let _fetchTokens = async (address, type = '') => {
+let _fetchTokens = async (address, kind = '') => {
   try {
     var data = [];
 
@@ -309,7 +312,7 @@ let _fetchTokens = async (address, type = '') => {
         rarity_score: rarity_score,
         isSync: false,
         isLoading: true,
-        type: type
+        kind: kind
       });
       return 1;
     }, Promise.resolve(''));
@@ -338,7 +341,7 @@ let _fetchTokens = async (address, type = '') => {
   }
 };
 
-let _fetchTrades = async (address, type = '') => {
+let _fetchTrades = async (address, kind = '') => {
   var data = [];
 
   var options = {
@@ -373,7 +376,7 @@ let _fetchTrades = async (address, type = '') => {
       tradeAt: item.block_timestamp,
       isSync: false,
       isLoading: true,
-      type: type
+      kind: kind
     });
   });
   console.log(address, data.length, 'trades fetched among ', ttt);
@@ -446,7 +449,6 @@ let cronFetchTop100 = async () => {
       var { name, symbol, unsafeOpenseaImageUrl, unsafeOpenseaSlug } = await icyContractInfo(
         item.contractAddress
       );
-      console.log(unsafeOpenseaImageUrl);
       await TopCollections.create({
         ...item,
         name,
@@ -467,9 +469,9 @@ let cronFetchTop100 = async () => {
   console.log('Top Collections Updating', starttime);
 
   await TopCollections.updateMany({}, { isLoading: false }, { upsert: true });
-  await Traits.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
-  await Tokens.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
-  await Trades.updateMany({ type: 'top' }, { isLoading: false }, { upsert: true });
+  await Traits.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
+  await Tokens.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
+  await Trades.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
 
   await savedata();
   console.log('savedata done');
@@ -479,26 +481,28 @@ let cronFetchTop100 = async () => {
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Trades.deleteMany({ type: 'top', isLoading: false });
+  await Trades.deleteMany({ kind: 'top', isLoading: false });
   await Trades.updateMany(
-    { type: 'top', isLoading: true },
+    { kind: 'top', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Tokens.deleteMany({ type: 'top', isLoading: false });
+  await Tokens.deleteMany({ kind: 'top', isLoading: false });
   await Tokens.updateMany(
-    { type: 'top', isLoading: true },
+    { kind: 'top', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Traits.deleteMany({ type: 'top', isLoading: false });
+  await Traits.deleteMany({ kind: 'top', isLoading: false });
   await Traits.updateMany(
-    { type: 'top', isLoading: true },
+    { kind: 'top', isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
 
   console.log('Top Collections Updated', starttime, new Date());
+
+  return;
 };
 
 exports.getTrendingCollections = async (req, res) => {
@@ -609,7 +613,7 @@ exports.getTrades = async (req, res) => {
             marketplace: 0,
             seller: 0,
             transaction: 0,
-            type: 0
+            kind: 0
           }
         )
       )
