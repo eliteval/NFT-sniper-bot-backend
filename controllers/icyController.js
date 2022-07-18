@@ -231,7 +231,7 @@ let _fetchTokens = async (address, kind = '') => {
       // limit: 100,
       chain: 'eth'
     };
-    var result = await Moralis.Web3API.token.getNFTOwners(options);
+    var result = await Moralis.Web3API.token.getAllTokenIds(options);
     data = data.concat(result.result);
     totaltokens += result.total;
 
@@ -242,7 +242,7 @@ let _fetchTokens = async (address, kind = '') => {
       process.stdout.write(`getNFTs ${ttt} tokens, ${progress} `);
 
       while (result.next && result.cursor) {
-        result = await Moralis.Web3API.token.getNFTOwners({
+        result = await Moralis.Web3API.token.getAllTokenIds({
           ...options,
           cursor: result.cursor
         });
@@ -250,7 +250,7 @@ let _fetchTokens = async (address, kind = '') => {
         progress += result.result.length; //progress bar
         bar1.update(progress); //progress bar
         if (progress % 1000 == 0) process.stdout.write(progress + ' ');
-        if (progress > 10000) break;
+        if (progress > 100000) break;
       }
       bar1.stop(); //progress bar
     }
@@ -304,11 +304,11 @@ let _fetchTokens = async (address, kind = '') => {
         name: name,
         image: image,
         attributes: attributes,
-        owner: item.owner_of,
+        owner: item.owner_of, //not exist in getAllTokensIds
         token_uri: item.token_uri,
         metadata: item.metadata,
         contract_type: item.contract_type,
-        synced_at: item.synced_at,
+        synced_at: item.last_metadata_sync,
         rarity_score: rarity_score,
         isSync: false,
         isLoading: true,
