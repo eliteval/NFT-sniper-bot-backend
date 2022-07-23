@@ -363,7 +363,7 @@ let _fetchTrades = async (address, kind = '') => {
   console.log(address, data.length, 'trades fetched among ', ttt);
 };
 
-let cronFetchTop100 = async () => {
+let cronFetchTopCollections = async () => {
   let icyContractInfo = async (address) => {
     const query = gql`
       query($address: String!) {
@@ -384,7 +384,14 @@ let cronFetchTop100 = async () => {
     try {
       var results = await graphQLClient.request(query, variables);
       var data = results.contract;
-      return data;
+      if (data) return data;
+      else
+        return {
+          name: '',
+          symbol: '',
+          unsafeOpenseaImageUrl: '',
+          unsafeOpenseaSlug: ''
+        };
     } catch (error) {
       console.log(error.message);
       return {
@@ -1032,9 +1039,9 @@ let sendemail = async () => {
 
 (async () => {
   //top collections
-  await cronFetchTop100();
+  await cronFetchTopCollections();
   setInterval(async () => {
-    await cronFetchTop100();
+    await cronFetchTopCollections();
   }, 12 * 60 * 60 * 1000);
 
   //trending collections
