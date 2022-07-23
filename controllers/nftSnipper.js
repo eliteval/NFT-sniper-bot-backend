@@ -297,7 +297,7 @@ exports.getContractInfo = async (req, res) => {
     return res.json({
       name: name,
       symbol: symbol,
-      totalSupply: totalSupply,
+      totalSupply: totalSupply
     });
   } catch (error) {
     console.log('[ERROR->readcontract]', error); // have to think about this.
@@ -343,22 +343,22 @@ exports.addBot = async (req, res) => {
     }
     if (data.gasPrice <= 0) {
       return res.status(403).json({
-        message: 'Please input gasPrice correctly.'
+        message: 'Please input gasPrice exactly.'
       });
     }
     if (data.gasLimit <= 0) {
       return res.status(403).json({
-        message: 'Please input gasLimit correctly.'
+        message: 'Please input gasLimit exactly.'
       });
     }
-    if (data.eth <= 0) {
+    if (data.eth < 0) {
       return res.status(403).json({
-        message: 'Please input sniper amount correctly.'
+        message: 'Please input token price exactly.'
       });
     }
     if (data.tokenAmount <= 0) {
       return res.status(403).json({
-        message: 'Please input token amount correctly.'
+        message: 'Please input token amount exactly.'
       });
     }
     //add data

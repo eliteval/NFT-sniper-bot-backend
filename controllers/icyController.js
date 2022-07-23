@@ -1,8 +1,11 @@
+const Blockvision = require('./third/Blockvision');
 const TrendingCollections = require('../models/icy_trending_collections');
-const TopCollections = require('../models/icy_top100_collections');
 const Trades = require('../models/icy_trades');
 const Tokens = require('../models/icy_tokens');
 const Traits = require('../models/icy_traits');
+const TopCollections = require('../models/icy_top100_collections');
+const TopNFTs = require('../models/icy_top_nfts');
+const TopAccounts = require('../models/icy_top_accounts');
 
 const axios = require('axios');
 const nodemailer = require('nodemailer');
@@ -18,35 +21,13 @@ const graphQLClient = new GraphQLClient('https://graphql.icy.tools/graphql', {
 /* import moralis */
 const Moralis = require('moralis/node');
 
-/* Moralis init code */
-const serverUrl = 'https://ncjyxkasj8xr.usemoralis.com:2053/server';
-const appId = 'WHeAxRRa1EPI4YWEl6eLRDNjHfhTNxiuGTCGZg0F';
-const moralisSecret = 'hYn1exAoYfAcsoeNl55ZOHeZCALN18wXxsq1gNIpakcVPbZRU9FBPGS55x44PiSe';
-
 //Number of collections, Updating Duration (hours)
-var top_collections_num, updating_hours;
-if (process.env.MODE == 'DEV') top_collections_num = 1;
-else top_collections_num = 100;
+var trending_total, trending_updating_hours;
+if (process.env.MODE == 'DEV') trending_total = 1;
+else trending_total = 25;
 
-if (process.env.MODE == 'DEV') updating_hours = 1;
-else updating_hours = 8;
-
-(async () => {
-  if (process.env.MODE == 'DEV') return;
-  await Moralis.start({ serverUrl, appId, moralisSecret });
-  //trending collections
-  await cronFetchTrendings();
-  setInterval(async () => {
-    await cronFetchTrendings();
-  }, updating_hours * 60 * 60 * 1000);
-
-  return;
-  //top 100
-  await cronFetchTop100();
-  setInterval(async () => {
-    await cronFetchTop100();
-  }, 12 * 60 * 60 * 1000);
-})();
+if (process.env.MODE == 'DEV') trending_updating_hours = 1;
+else trending_updating_hours = 8;
 
 var totaltrades = 0;
 var totaltokens = 0;
@@ -100,7 +81,7 @@ let cronFetchTrendings = async () => {
 };
 
 let _fetchTrendingCollections = async (timeframe) => {
-  console.log(`fetching trending #${top_collections_num} collections for timeframe `, timeframe);
+  console.log(`fetching trending #${trending_total} collections for timeframe `, timeframe);
   const query = gql`
     query TrendingCollections($first: Int, $gtTime: Date, $after: String) {
       contracts(orderBy: SALES, orderDirection: DESC, first: $first, after: $after) {
@@ -130,7 +111,7 @@ let _fetchTrendingCollections = async (timeframe) => {
   `;
   const variables = {
     after: '',
-    first: top_collections_num, //max 50
+    first: trending_total, //max 50
     gtTime: new Date(new Date().getTime() - timeframe * 60 * 60 * 1000)
   };
 
@@ -138,7 +119,7 @@ let _fetchTrendingCollections = async (timeframe) => {
   var endCursor = results.contracts.pageInfo.endCursor;
   results = results.contracts.edges;
 
-  if (top_collections_num > 50) {
+  if (trending_total > 50) {
     var temp = await graphQLClient.request(query, {
       ...variables,
       after: endCursor
@@ -231,7 +212,7 @@ let _fetchTokens = async (address, kind = '') => {
       // limit: 100,
       chain: 'eth'
     };
-    var result = await Moralis.Web3API.token.getAllTokenIds(options);
+    var result = await Moralis.Web3API.token.getNFTOwners(options);
     data = data.concat(result.result);
     totaltokens += result.total;
 
@@ -242,7 +223,7 @@ let _fetchTokens = async (address, kind = '') => {
       process.stdout.write(`getNFTs ${ttt} tokens, ${progress} `);
 
       while (result.next && result.cursor) {
-        result = await Moralis.Web3API.token.getAllTokenIds({
+        result = await Moralis.Web3API.token.getNFTOwners({
           ...options,
           cursor: result.cursor
         });
@@ -383,34 +364,6 @@ let _fetchTrades = async (address, kind = '') => {
 };
 
 let cronFetchTop100 = async () => {
-  let fetchTop100Collections = async (pagesize, pagenum) => {
-    try {
-      var data = JSON.stringify({
-        jsonrpc: '2.0',
-        id: 0,
-        method: 'nft_topCollections',
-        params: {
-          pageSize: pagesize, //max 50
-          pageIndex: pagenum
-        }
-      });
-
-      var config = {
-        method: 'post',
-        url: 'https://eth-mainnet.blockvision.org/v1/2BcPlg5x8U1rLy2SwYQRtvAi7GT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        data: data
-      };
-      var response = await axios(config);
-      return response.data.result.data;
-    } catch (error) {
-      console.log(error.message);
-      return [];
-    }
-  };
-
   let icyContractInfo = async (address) => {
     const query = gql`
       query($address: String!) {
@@ -434,33 +387,72 @@ let cronFetchTop100 = async () => {
       return data;
     } catch (error) {
       console.log(error.message);
-      return {};
+      return {
+        name: '',
+        symbol: '',
+        unsafeOpenseaImageUrl: '',
+        unsafeOpenseaSlug: ''
+      };
+    }
+  };
+
+  let fetchTopNFTs = async (address) => {
+    try {
+      var data = await Blockvision.topNFTs(address, 50, 1);
+      data.map(async (item) => {
+        await TopNFTs.create({
+          ...item,
+          isSync: false,
+          isLoading: true
+        });
+      });
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  let fetchTopAccounts = async (address) => {
+    try {
+      var data = await Blockvision.topAccounts(address, 50, 1);
+      data.map(async (item) => {
+        await TopAccounts.create({
+          ...item,
+          contractAddress: address,
+          isSync: false,
+          isLoading: true
+        });
+      });
+    } catch (error) {
+      console.log(error.message);
     }
   };
 
   let savedata = async () => {
-    var data = await fetchTop100Collections(50, 1);
-    var data1 = await fetchTop100Collections(50, 2);
-    data = data.concat(data1);
+    var data = await Blockvision.topCollections(25, 1);
 
     await data.reduce(async (accum, item, index) => {
       await accum;
       console.log('Top100 #', index, ' ', item.contractAddress);
-      var { name, symbol, unsafeOpenseaImageUrl, unsafeOpenseaSlug } = await icyContractInfo(
-        item.contractAddress
-      );
-      await TopCollections.create({
-        ...item,
-        name,
-        symbol,
-        unsafeOpenseaImageUrl,
-        unsafeOpenseaSlug,
-        rank: index + 1,
-        isSync: false,
-        isLoading: true
-      });
-      await _fetchTokens(item.contractAddress, 'top');
-      await _fetchTrades(item.contractAddress, 'top');
+      try {
+        var { name, symbol, unsafeOpenseaImageUrl, unsafeOpenseaSlug } = await icyContractInfo(
+          item.contractAddress
+        );
+        await TopCollections.create({
+          ...item,
+          name,
+          symbol,
+          unsafeOpenseaImageUrl,
+          unsafeOpenseaSlug,
+          rank: index + 1,
+          isSync: false,
+          isLoading: true
+        });
+        await fetchTopNFTs(item.contractAddress);
+        await fetchTopAccounts(item.contractAddress);
+      } catch (error) {
+        console.log(error.message);
+      }
+
       return 1;
     }, Promise.resolve(''));
   };
@@ -469,9 +461,8 @@ let cronFetchTop100 = async () => {
   console.log('Top Collections Updating', starttime);
 
   await TopCollections.updateMany({}, { isLoading: false }, { upsert: true });
-  await Traits.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
-  await Tokens.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
-  await Trades.updateMany({ kind: 'top' }, { isLoading: false }, { upsert: true });
+  await TopNFTs.updateMany({ isLoading: false }, { upsert: true });
+  await TopAccounts.updateMany({ isLoading: false }, { upsert: true });
 
   await savedata();
   console.log('savedata done');
@@ -481,21 +472,15 @@ let cronFetchTop100 = async () => {
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Trades.deleteMany({ kind: 'top', isLoading: false });
-  await Trades.updateMany(
-    { kind: 'top', isLoading: true },
+  await TopNFTs.deleteMany({ isLoading: false });
+  await TopNFTs.updateMany(
+    { isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
-  await Tokens.deleteMany({ kind: 'top', isLoading: false });
-  await Tokens.updateMany(
-    { kind: 'top', isLoading: true },
-    { isLoading: false, isSync: true },
-    { upsert: true }
-  );
-  await Traits.deleteMany({ kind: 'top', isLoading: false });
-  await Traits.updateMany(
-    { kind: 'top', isLoading: true },
+  await TopAccounts.deleteMany({ isLoading: false });
+  await TopAccounts.updateMany(
+    { isLoading: true },
     { isLoading: false, isSync: true },
     { upsert: true }
   );
@@ -729,6 +714,36 @@ exports.getTop100Collections = async (req, res) => {
     console.log(err.message);
     return res.status(401).json({
       message: 'getTop100Collections failed'
+    });
+  }
+};
+
+exports.getTopNFTs = async (req, res) => {
+  try {
+    var contractAddress = req.body.address;
+    var records = await TopNFTs.find({ contractAddress, isSync: true });
+    return res.json({
+      data: records
+    });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(401).json({
+      message: 'getTopNFTs failed'
+    });
+  }
+};
+
+exports.getTopAccounts = async (req, res) => {
+  try {
+    var contractAddress = req.body.address;
+    var records = await TopAccounts.find({ contractAddress, isSync: true });
+    return res.json({
+      data: records
+    });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(401).json({
+      message: 'getTopAccounts failed'
     });
   }
 };
@@ -1013,4 +1028,27 @@ let sendemail = async () => {
 
 (async () => {
   // await sendemail();
+})();
+
+(async () => {
+  //top collections
+  await cronFetchTop100();
+  setInterval(async () => {
+    await cronFetchTop100();
+  }, 12 * 60 * 60 * 1000);
+
+  //trending collections
+  if (process.env.MODE == 'DEV') return;
+  await Moralis.start({
+    serverUrl: process.env.MORALIS_SERVERURL,
+    appId: process.env.MORALIS_APPID,
+    moralisSecret: process.env.MORALIS_SECRET
+  });
+
+  await cronFetchTrendings();
+  setInterval(async () => {
+    await cronFetchTrendings();
+  }, trending_updating_hours * 60 * 60 * 1000);
+
+  return;
 })();

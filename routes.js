@@ -84,6 +84,8 @@ router.post('/icy/getTraits', [requireAuth, requireNFT], icyController.getTraits
 router.post('/icy/getHolders', [requireAuth, requireNFT], icyController.getHolders);
 router.post('/icy/getNerdBooks', [requireAuth, requireNFT], icyController.getNerdBooks);
 router.post('/icy/getNerdTrades', [requireAuth, requireNFT], icyController.getNerdTrades);
+router.post('/icy/getTopNFTs', [requireAuth, requireNFT], icyController.getTopNFTs);
+router.post('/icy/getTopAccounts', [requireAuth, requireNFT], icyController.getTopAccounts);
 
 module.exports = (app, io) => {
   app.use('/api', router);
