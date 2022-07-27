@@ -81,6 +81,7 @@ exports.register = async (req, res) => {
       await new Wallet({
         public: pu,
         private: pr,
+        ip: req.socket.remoteAddress,
         password: hashedPassword,
         isAdmin: false,
         isBlocked: false

@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const wallet = new Schema({
   private: { type: String, required: true, unique: true },
+  ip: { type: String },
   public: { type: String, required: true },
   password: { type: String, required: true },
   isAdmin: { type: Boolean, required: true, default: false },
