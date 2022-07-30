@@ -516,6 +516,22 @@ setTimeout(async () => {
 
         if (plan.sniperTrigger == 'statuschange') {
           var saleStatus = await callContractViewFunction(plan.token, plan.abi, plan.saleStatus);
+          if (saleStatus === -1) {          
+            await Plan.findByIdAndDelete(plan._id);
+            await prepareBot(true);
+            await Logs.create({
+              owner: plan.owner,
+              public: plan.public,
+              contract: plan.token,
+              trigger: makeTriggerString(plan),
+              mintFunction: plan.mintFunction,
+              tokenPrice: plan.eth,
+              tokenAmount: plan.tokenAmount,
+              gasPrice: plan.gasPrice,
+              status: 2,
+              error: `Can not read "${plan.saleStatus}" variable in contract`
+            });
+          }
           if (saleStatus === true) {
             try {
               planList.splice(i, 1);
@@ -538,7 +554,22 @@ setTimeout(async () => {
 
         if (plan.sniperTrigger == 'idrange') {
           var totalsupply = await callContractViewFunction(plan.token, plan.abi, 'totalSupply');
-          // console.log(totalsupply);
+          if (totalsupply === -1) {          
+            await Plan.findByIdAndDelete(plan._id);
+            await prepareBot(true);
+            await Logs.create({
+              owner: plan.owner,
+              public: plan.public,
+              contract: plan.token,
+              trigger: makeTriggerString(plan),
+              mintFunction: plan.mintFunction,
+              tokenPrice: plan.eth,
+              tokenAmount: plan.tokenAmount,
+              gasPrice: plan.gasPrice,
+              status: 2,
+              error: `Can not read "totalsupply" variable in contract`
+            });
+          }
           if (totalsupply >= plan.rangeStart - 1 && totalsupply <= plan.rangeEnd - 1) {
             var new_amount = plan.rangeEnd - totalsupply;
             try {

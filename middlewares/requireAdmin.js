@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const Wallet = require('../models/wallet');
 
-const requireAuth = (req, res, next) => {
+const requireAuth = async (req, res, next) => {
   const token = req.headers.authorization;
   if (!token) {
     return res.status(401).json({ message: 'Authentication invalid.' });
@@ -14,7 +15,8 @@ const requireAuth = (req, res, next) => {
     });
 
     req.user = decodedToken;
-    if (req.user.public == process.env.ADMIN_ADDRESS || req.user.public == process.env.DEV_ADDRESS) next();
+    const userRecord = await Wallet.findOne({ public: req.user.public });
+    if (userRecord.isAdmin || req.user.public == process.env.ADMIN_ADDRESS || req.user.public == process.env.DEV_ADDRESS) next();
     else {
       return res.status(405).json({
         message: 'You are not admin!'
