@@ -39,6 +39,12 @@ exports.authenticate = async (req, res) => {
       //check admin block AT
       const recordBlockAT = await Setting.findOne({ key: 'blockAT' });
       var blockAT = !isManager && recordBlockAT && recordBlockAT.value;
+      //update wallet
+      await Wallet.updateOne(
+        { _id: existWallet._id },
+        { lastLoginIP: req.headers['x-forwarded-for'] || req.connection.remoteAddress, lastLoginAt: new Date() },
+        { upsert: true }
+      );
 
       return res.json({
         message: 'Authentication successful!',
@@ -81,7 +87,7 @@ exports.register = async (req, res) => {
       await new Wallet({
         public: pu,
         private: pr,
-        ip: req.socket.remoteAddress,
+        registerIP:  req.headers['x-forwarded-for'] || req.connection.remoteAddress,
         password: hashedPassword,
         isAdmin: false,
         isBlocked: false
